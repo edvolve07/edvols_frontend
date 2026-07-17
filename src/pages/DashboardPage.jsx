@@ -92,12 +92,16 @@ function roleHome(role) {
 export default function DashboardPage() {
   const { user } = useAuth();
   const [dashboard, setDashboard] = useState(null);
+  const [journey, setJourney] = useState(null);
   const [analyticsError, setAnalyticsError] = useState("");
   const [loading, setLoading] = useState(true);
   const [certificateBusy, setCertificateBusy] = useState("");
   const [greeting, setGreeting] = useState(() => getTimeBasedGreeting());
 
   const adminHome = roleHome(user?.role);
+
+  const levelColors = ["bg-slate-400", "bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-rose-500"];
+  const levelNames = ["Foundation", "Professional", "Advanced", "Expert", "Mentor", "Placement Master"];
 
   useEffect(() => {
     if (adminHome) return undefined;
@@ -108,9 +112,17 @@ export default function DashboardPage() {
     async function loadDashboard({ quiet = false } = {}) {
       if (!quiet) setLoading(true);
       try {
-        const data = await apiFetch("/api/student/dashboard");
+        const [dashData, journeyData] = await Promise.allSettled([
+          apiFetch("/api/student/dashboard"),
+          apiFetch("/api/mentorship/journey"),
+        ]);
         if (isMounted) {
-          setDashboard(data);
+          if (dashData.status === "fulfilled") {
+            setDashboard(dashData.value);
+          }
+          if (journeyData.status === "fulfilled") {
+            setJourney(journeyData.value.journey || null);
+          }
           setAnalyticsError("");
         }
       } catch (error) {
@@ -199,6 +211,17 @@ export default function DashboardPage() {
         tone: "brand",
       },
     ];
+
+    if (journey?.current_level) {
+      const lvl = journey.current_level;
+      cards.push({
+        label: "Mentorship Level",
+        value: levelNames[lvl - 1] || `Level ${lvl}`,
+        caption: `Level ${lvl} of 6`,
+        icon: Award,
+        tone: lvl >= 5 ? "amber" : "green",
+      });
+    }
 
     if (hasAptitude) {
       cards.push({

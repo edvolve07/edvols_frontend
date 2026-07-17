@@ -3,8 +3,10 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, BookOpenCheck, BrainCircuit, Building2, Loader2,
   Mail, Phone, Plus, ShieldCheck, Trash2, TrendingUp, Upload, UserCog, Users, X, KeyRound, GraduationCap, Building,
+  Crown, CheckCircle2, AlertCircle, Pencil,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/src/portal/context/AuthContext";
 
 const MODULE_LABELS = {
   aptitude: "Aptitude",
@@ -490,7 +492,344 @@ function DepartmentModal({ open, onClose, institutionId, onCreated }) {
   );
 }
 
+function StudentEditModal({ open, onClose, student, departments, onSaved }) {
+  const [form, setForm] = useState({ name: "", email: "", phone: "", usn: "", department_id: "", year: "", target_career_goal: "", organization: "" });
+  const [saving, setSaving] = useState(false);
+  const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    if (student) {
+      setForm({
+        name: student.name || "",
+        email: student.email || "",
+        phone: student.phone || "",
+        usn: student.usn || "",
+        department_id: student.department_id || "",
+        year: student.year || "",
+        target_career_goal: student.target_career_goal || "",
+        organization: student.organization || "",
+      });
+      setResult(null);
+    }
+  }, [student]);
+
+  if (!open || !student) return null;
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSaving(true);
+    setResult(null);
+    try {
+      await apiFetch(`/api/mentorship/admin/student-users/${student.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(form),
+      });
+      setResult({ type: "success", message: "Student updated successfully" });
+      onSaved();
+    } catch (err) {
+      setResult({ type: "error", message: err.message || "Failed to update student" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm">
+      <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl border border-slate-100 bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Pencil size={18} className="text-blue-600" />
+            <h2 className="text-lg font-semibold text-slate-950">Edit Student</h2>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+            <X size={18} />
+          </button>
+        </div>
+
+        {result && (
+          <div className={`mb-4 flex items-start gap-2 rounded-xl p-3 text-sm font-medium ${
+            result.type === "success" ? "border border-emerald-100 bg-emerald-50 text-emerald-700" : "border border-red-100 bg-red-50 text-red-700"
+          }`}>
+            {result.type === "success" ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <AlertCircle size={16} className="mt-0.5 shrink-0" />}
+            {result.message}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Full Name *</label>
+              <input className="field" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Email *</label>
+              <input className="field" type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Phone</label>
+              <input className="field" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-600">USN</label>
+              <input className="field" value={form.usn} onChange={(e) => setForm((p) => ({ ...p, usn: e.target.value }))} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Year</label>
+              <select className="field" value={form.year} onChange={(e) => setForm((p) => ({ ...p, year: e.target.value }))}>
+                <option value="">Select year</option>
+                <option value="1st">1st Year</option>
+                <option value="2nd">2nd Year</option>
+                <option value="3rd">3rd Year</option>
+                <option value="4th">4th Year</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Department</label>
+              <select className="field" value={form.department_id} onChange={(e) => setForm((p) => ({ ...p, department_id: e.target.value }))}>
+                <option value="">Select department</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Career Goal</label>
+              <input className="field" value={form.target_career_goal} onChange={(e) => setForm((p) => ({ ...p, target_career_goal: e.target.value }))} placeholder="e.g. Software Engineer" />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Organization</label>
+              <input className="field" value={form.organization} onChange={(e) => setForm((p) => ({ ...p, organization: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={onClose}
+              className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">Cancel</button>
+            <button disabled={saving}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-70">
+              {saving ? <Loader2 size={15} className="animate-spin" /> : <Pencil size={15} />}
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+const PLANS = [
+  { key: "1_month", name: "1 Month", interviews: 4, price: 499 },
+  { key: "3_month", name: "3 Months", interviews: 12, price: 1199 },
+  { key: "6_month", name: "6 Months", interviews: 24, price: 1999 },
+];
+
+function SubscriptionAssignModal({ open, onClose, institutionId, departments, students, onAssigned }) {
+  const [scope, setScope] = useState("institution");
+  const [planKey, setPlanKey] = useState("3_month");
+  const [selectedDept, setSelectedDept] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [studentSearch, setStudentSearch] = useState("");
+  const [impact, setImpact] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    if (!open) {
+      setScope("institution");
+      setPlanKey("3_month");
+      setSelectedDept("");
+      setSelectedYear("");
+      setSelectedStudents([]);
+      setStudentSearch("");
+      setImpact(null);
+      setResult(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || scope === "individual") return;
+    const params = new URLSearchParams({ institution_id: institutionId });
+    if (selectedDept) params.set("department_id", selectedDept);
+    if (selectedYear) params.set("year", selectedYear);
+    let cancelled = false;
+    apiFetch(`/api/mentorship/admin/subscription-impact?${params.toString()}`)
+      .then((data) => { if (!cancelled) setImpact(data); })
+      .catch(() => { if (!cancelled) setImpact(null); });
+    return () => { cancelled = true; };
+  }, [open, scope, institutionId, selectedDept, selectedYear]);
+
+  const filteredStudents = students.filter((s) => {
+    if (!studentSearch.trim()) return true;
+    const q = studentSearch.toLowerCase();
+    return s.name?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q);
+  });
+
+  function toggleStudent(id) {
+    setSelectedStudents((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  async function handleAssign() {
+    setSaving(true);
+    setResult(null);
+    try {
+      if (scope === "individual") {
+        if (selectedStudents.length === 0) {
+          setResult({ type: "error", message: "Select at least one student." });
+          setSaving(false);
+          return;
+        }
+        await apiFetch("/api/mentorship/admin/subscriptions/bulk", {
+          method: "POST",
+          body: JSON.stringify({ student_ids: selectedStudents, plan_key: planKey }),
+        });
+      } else {
+        const body = { institution_id: institutionId, plan_key: planKey };
+        if (selectedDept) body.department_id = selectedDept;
+        if (selectedYear) body.year = selectedYear;
+        await apiFetch(`/api/mentorship/admin/subscriptions/institution/${institutionId}`, {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+      }
+      setResult({ type: "success", message: "Subscription assigned successfully!" });
+      onAssigned();
+    } catch (err) {
+      setResult({ type: "error", message: err.message || "Failed to assign subscription." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm">
+      <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl border border-slate-100 bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Crown size={18} className="text-brand-600" />
+            <h2 className="text-lg font-semibold text-slate-950">Assign Subscription</h2>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+            <X size={18} />
+          </button>
+        </div>
+
+        {result && (
+          <div className={`mb-4 flex items-start gap-2 rounded-xl p-3 text-sm font-medium ${
+            result.type === "success" ? "border border-emerald-100 bg-emerald-50 text-emerald-700" : "border border-red-100 bg-red-50 text-red-700"
+          }`}>
+            {result.type === "success" ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <AlertCircle size={16} className="mt-0.5 shrink-0" />}
+            {result.message}
+          </div>
+        )}
+
+        <div className="mb-4">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">Assign to</label>
+          <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+            {[
+              ["institution", "Whole Institution"],
+              ["department", "By Department"],
+              ["year", "By Year"],
+              ["individual", "Individual"],
+            ].map(([val, label]) => (
+              <button key={val} type="button" onClick={() => setScope(val)}
+                className={`flex-1 rounded-md px-2 py-1.5 text-xs font-semibold transition ${scope === val ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">Plan</label>
+          <select className="field" value={planKey} onChange={(e) => setPlanKey(e.target.value)}>
+            {PLANS.map((p) => (
+              <option key={p.key} value={p.key}>{p.name} — {p.interviews} interviews (₹{p.price})</option>
+            ))}
+          </select>
+        </div>
+
+        {scope === "department" && (
+          <div className="mb-4">
+            <label className="mb-1 block text-xs font-semibold text-slate-600">Department (optional)</label>
+            <select className="field" value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)}>
+              <option value="">All departments</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {scope === "year" && (
+          <div className="mb-4">
+            <label className="mb-1 block text-xs font-semibold text-slate-600">Year (optional)</label>
+            <select className="field" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+              <option value="">All years</option>
+              <option value="1st">1st Year</option>
+              <option value="2nd">2nd Year</option>
+              <option value="3rd">3rd Year</option>
+              <option value="4th">4th Year</option>
+            </select>
+          </div>
+        )}
+
+        {scope === "individual" && (
+          <div className="mb-4">
+            <label className="mb-1 block text-xs font-semibold text-slate-600">Select Students</label>
+            <input className="field" placeholder="Search students..." value={studentSearch}
+              onChange={(e) => setStudentSearch(e.target.value)} />
+            <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100">
+              {filteredStudents.length === 0 && (
+                <p className="px-3 py-4 text-center text-xs text-slate-400">No students found</p>
+              )}
+              {filteredStudents.map((s) => (
+                <label key={s.id} className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-slate-50 transition">
+                  <input type="checkbox" checked={selectedStudents.includes(s.id)}
+                    onChange={() => toggleStudent(s.id)}
+                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-900">{s.name}</p>
+                    <p className="truncate text-xs text-slate-400">{s.email}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            {selectedStudents.length > 0 && (
+              <p className="mt-1 text-xs text-brand-600 font-medium">{selectedStudents.length} student(s) selected</p>
+            )}
+          </div>
+        )}
+
+        {impact && scope !== "individual" && (
+          <div className="mb-4 rounded-lg bg-brand-50 border border-brand-100 p-3 text-sm">
+            <p className="font-semibold text-brand-800">Impact Preview</p>
+            <p className="text-xs text-brand-600 mt-1">
+              {impact.total_affected ?? impact.total ?? 0} student(s) will receive the <strong>{PLANS.find((p) => p.key === planKey)?.name}</strong> plan.
+            </p>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose}
+            className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">Cancel</button>
+          <button onClick={handleAssign} disabled={saving}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-70">
+            {saving ? <Loader2 size={15} className="animate-spin" /> : <Crown size={15} />}
+            {saving ? "Assigning..." : "Assign Subscription"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function InstitutionDetail() {
+  const { user } = useAuth();
+  const isMasterAdmin = user?.role === "master_admin";
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -504,6 +843,8 @@ export default function InstitutionDetail() {
   const [showCreateAdmin, setShowCreateAdmin] = useState(false);
   const [showCreateStudent, setShowCreateStudent] = useState(false);
   const [showAddDepartment, setShowAddDepartment] = useState(false);
+  const [showAssignSubscription, setShowAssignSubscription] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deletingDept, setDeletingDept] = useState(null);
 
@@ -763,6 +1104,12 @@ export default function InstitutionDetail() {
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">{students.length}</span>
             </div>
             <div className="flex items-center gap-2">
+              {isMasterAdmin && (
+                <button onClick={() => setShowAssignSubscription(true)}
+                  className="inline-flex items-center gap-1 rounded-xl bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700">
+                  <Crown size={13} /> Assign Subscription
+                </button>
+              )}
               <Link to={`/master-admin/students?institution_id=${id}`}
                 className="text-xs font-semibold text-emerald-600 hover:text-emerald-700">
                 View all
@@ -799,6 +1146,11 @@ export default function InstitutionDetail() {
                     }`}>
                       {student.is_active !== false ? "Active" : "Inactive"}
                     </span>
+                    <button onClick={() => setEditingStudent(student)}
+                      className="rounded-lg border border-slate-200 p-1.5 text-slate-400 transition hover:bg-blue-50 hover:text-blue-500"
+                      title="Edit student">
+                      <Pencil size={14} />
+                    </button>
                     <button onClick={() => setDeleteTarget({ id: student.id, name: student.name, type: "student" })}
                       className="rounded-lg border border-slate-200 p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
                       title="Delete student">
@@ -822,6 +1174,12 @@ export default function InstitutionDetail() {
 
       <DepartmentModal open={showAddDepartment} onClose={() => setShowAddDepartment(false)}
         institutionId={id} onCreated={loadDepartments} />
+
+      <SubscriptionAssignModal open={showAssignSubscription} onClose={() => setShowAssignSubscription(false)}
+        institutionId={id} departments={departments} students={students} onAssigned={() => { loadStudents(); refreshAdmins(); }} />
+
+      <StudentEditModal open={!!editingStudent} onClose={() => setEditingStudent(null)}
+        student={editingStudent} departments={departments} onSaved={() => { setEditingStudent(null); loadStudents(); }} />
 
       {deleteTarget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm">

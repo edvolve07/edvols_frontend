@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
+  Clock,
   FileText,
   Loader2,
   Mic,
@@ -16,7 +17,7 @@ import {
 import clsx from "clsx";
 import { DOMAIN_ROLES, INTERVIEW_DOMAINS, INTERVIEW_ROLES, METRIC_LABELS } from "@/src/constants";
 import { useNavigate } from "@/src/navigation";
-import { endInterview, getSessionState, startInterview, submitAnswer as submitInterviewAnswer } from "@/lib/api";
+import { apiFetch, endInterview, getSessionState, startInterview, submitAnswer as submitInterviewAnswer } from "@/lib/api";
 import { useRecorder } from "@/components/VoiceRecorder";
 
 function MetricBar({ label, value }) {
@@ -479,6 +480,13 @@ function LiveInterview({
 
 const STORAGE_KEY = "activeInterviewSession";
 
+function formatLockDate(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(d);
+}
+
 export default function InterviewPage() {
   const navigate = useNavigate();
   const [phase, setPhase] = useState("setup");
@@ -491,6 +499,15 @@ export default function InterviewPage() {
   const [feedback, setFeedback] = useState("");
   const [metrics, setMetrics] = useState(null);
   const resumeAttempted = useRef(false);
+  const [lockStatus, setLockStatus] = useState(null);
+  const [lockLoading, setLockLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch("/api/mentorship/lock-status")
+      .then((data) => setLockStatus(data))
+      .catch(() => setLockStatus({ allowed: true }))
+      .finally(() => setLockLoading(false));
+  }, []);
 
   useEffect(() => {
     if (resumeAttempted.current) return;
@@ -575,6 +592,38 @@ export default function InterviewPage() {
   }
 
   if (phase === "setup") {
+    if (lockLoading) {
+      return (
+        <div className="flex min-h-[70vh] items-center justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-brand-600" />
+        </div>
+      );
+    }
+    if (lockStatus && lockStatus.allowed === false) {
+      return (
+        <div className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center px-4 py-10 text-center">
+          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-amber-50 text-amber-500">
+            <Clock className="h-10 w-10" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Interview Locked</h2>
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-600">
+            {lockStatus.reason || "You can start your next interview after the 5-day gap period."}
+          </p>
+          {lockStatus.nextUnlockAt && (
+            <p className="mt-3 rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800">
+              Available on {formatLockDate(lockStatus.nextUnlockAt)}
+              {lockStatus.daysRemaining > 0 && ` — ${lockStatus.daysRemaining} day${lockStatus.daysRemaining !== 1 ? "s" : ""} left`}
+            </p>
+          )}
+          <button
+            onClick={() => navigate("/progress")}
+            className="mt-8 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+          >
+            View Progress
+          </button>
+        </div>
+      );
+    }
     return <SetupForm onStart={handleStart} />;
   }
 

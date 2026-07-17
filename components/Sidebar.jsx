@@ -132,15 +132,18 @@ export default function Sidebar({ open = false, onClose = () => {}, width = DEFA
       <div className={clsx("space-y-4 pb-5", compact ? "px-2" : "px-5")}>
         
 
-        <div className={clsx("rounded-xl border border-white/15 bg-white/[0.05]", compact ? "p-3" : "p-4")}>
-          <div className={clsx("flex items-center", compact ? "justify-center" : "gap-3")}>
-            <Headphones size={20} className="text-emerald-100" />
-            <div className={clsx(compact && "hidden")}>
-              <p className="text-sm font-semibold text-white">Need Help?</p>
-              <p className="text-xs text-emerald-200">Contact Support</p>
-            </div>
-          </div>
-        </div>
+        <Link
+          href="/help"
+          onClick={onClose}
+          title={compact ? "Need Help?" : undefined}
+          className={clsx(
+            "flex items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-white/15",
+            compact ? "justify-center" : ""
+          )}
+        >
+          <Headphones size={16} />
+          {!compact && <span>Need Help?</span>}
+        </Link>
 
         <button
           type="button"

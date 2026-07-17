@@ -64,6 +64,13 @@ import MasterAdminAssessmentResults from "./pages/admin/programming/MasterAdminA
 import CommunicationPage from "./pages/CommunicationPage";
 import CommunicationReport from "./pages/CommunicationReport";
 import AdminCommunicationAnalytics from "./pages/admin/AdminCommunicationAnalytics";
+import ProgressPage from "./pages/ProgressPage";
+import PlacementJourneyPage from "./pages/PlacementJourneyPage";
+import NeedHelpPage from "./pages/NeedHelpPage";
+import MentorshipInterviewPage from "./pages/MentorshipInterviewPage";
+import InterviewReplayPage from "./pages/InterviewReplayPage";
+import MentorshipAdminDashboard from "./pages/admin/MentorshipAdminDashboard";
+import HelpRequestsPage from "./pages/admin/HelpRequestsPage";
 
 function AppShell({ children }) {
   const navigate = useNavigate();
@@ -134,19 +141,6 @@ function AppShell({ children }) {
             <p className="text-base font-bold leading-none text-slate-900">{APP_NAME}</p>
             <p className="mt-0.5 text-[11px] font-medium text-slate-500">Unified prep workspace</p>
           </div>
-
-          {(user?.role === "admin" || user?.role === "master_admin") && (
-            <div className="hidden md:flex items-center gap-1.5 text-xs font-medium text-slate-400 ml-4">
-              <span className="text-slate-500">/</span>
-              <span className="text-slate-700 font-semibold capitalize">
-                {user?.role === "master_admin" ? "Master Admin" : "Admin"}
-              </span>
-              <span className="text-slate-500">/</span>
-              <span className="text-slate-500">
-                {pathname.split("/").pop()?.replace(/-/g, " ") || "Dashboard"}
-              </span>
-            </div>
-          )}
 
           {user?.role !== "admin" && user?.role !== "master_admin" ? (
             <button className="hidden h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 sm:inline-flex">
@@ -242,6 +236,13 @@ export default function App() {
         <Route path="/profile" element={<AppShell><ProfilePage /></AppShell>} />
         <Route path="/communication" element={<AppShell><CommunicationPage /></AppShell>} />
         <Route path="/communication/report" element={<AppShell><CommunicationReport /></AppShell>} />
+        <Route path="/progress" element={<AppShell><ProgressPage /></AppShell>} />
+        <Route path="/journey" element={<AppShell><PlacementJourneyPage /></AppShell>} />
+        <Route path="/mentorship/interview/:sessionId" element={<AppShell><MentorshipInterviewPage /></AppShell>} />
+        <Route path="/mentorship/replays" element={<AppShell><InterviewReplayPage /></AppShell>} />
+        <Route path="/subscription" element={<Navigate to="/progress" replace />} />
+        <Route path="/mentorship" element={<Navigate to="/progress" replace />} />
+        <Route path="/help" element={<AppShell><NeedHelpPage /></AppShell>} />
       </Route>
 
       <Route element={<RequireRole roles={["admin"]} />}>
@@ -250,6 +251,7 @@ export default function App() {
         <Route path="/admin/analytics/aptitude" element={<AppShell><AdminAptitudeAnalytics /></AppShell>} />
         <Route path="/admin/analytics/interviews" element={<AppShell><AdminInterviewAnalytics /></AppShell>} />
         <Route path="/admin/analytics/communication" element={<AppShell><AdminCommunicationAnalytics /></AppShell>} />
+        <Route path="/admin/mentorship" element={<AppShell><MentorshipAdminDashboard /></AppShell>} />
         <Route path="/admin/assessments" element={<AppShell><AdminAssessments /></AppShell>} />
         <Route path="/admin/assessments/create" element={<AppShell><CreateAssessment /></AppShell>} />
         <Route path="/admin/assessments/:id/questions" element={<AppShell><QuestionReview /></AppShell>} />
@@ -279,6 +281,11 @@ export default function App() {
         <Route path="/master-admin/programming/assessments/create" element={<AppShell><MasterAdminAssessmentForm /></AppShell>} />
         <Route path="/master-admin/programming/assessments/:assessmentId/problems" element={<AppShell><MasterAdminAssessmentForm /></AppShell>} />
         <Route path="/master-admin/programming/assessments/:assessmentId/results" element={<AppShell><MasterAdminAssessmentResults /></AppShell>} />
+        <Route path="/admin/mentorship" element={<AppShell><MentorshipAdminDashboard /></AppShell>} />
+      </Route>
+
+      <Route element={<RequireRole roles={["master_admin"]} />}>
+        <Route path="/admin/help-requests" element={<AppShell><HelpRequestsPage /></AppShell>} />
       </Route>
 
       <Route element={<RoleGuard role="student" />}>

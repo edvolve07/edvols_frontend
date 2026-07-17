@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   ArrowRight, BarChart3, BookOpenCheck, Clock3, Code2, Download, FilePlus2, Loader2, Mic2, Users, X, ChevronRight,
-  GraduationCap, Building2, UserCheck, Award, TrendingUp,
+  GraduationCap, Building2, Award, TrendingUp, Crown, Search, ChevronDown,
 } from "lucide-react";
 import { Link } from "@/src/navigation";
-import { apiFetch, downloadAdminExport, downloadCodingProgressExport } from "@/lib/api";
+import { apiFetch, downloadAdminExport, downloadCodingProgressExport, downloadMentorshipOverviewPdf, downloadMentorshipStudentPdf } from "@/lib/api";
 import { useAuth } from "@/src/portal/context/AuthContext";
 
 function formatRelativeTime(value) {
@@ -105,6 +105,15 @@ function StudentDetailPanel({ studentId, onClose }) {
         >
           <X size={18} />
         </button>
+        {!loading && data && (
+          <button
+            type="button"
+            onClick={() => downloadMentorshipStudentPdf(studentId)}
+            className="absolute right-14 top-4 z-10 inline-flex items-center gap-1.5 rounded-lg bg-accent-50 px-3 py-2 text-xs font-semibold text-accent-700 hover:bg-accent-100"
+          >
+            <Download size={14} /> Student PDF
+          </button>
+        )}
 
         {loading ? (
           <div className="flex min-h-[300px] items-center justify-center">
@@ -268,11 +277,35 @@ export default function EdvolsAdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeYear, setActiveYear] = useState("1st");
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
+  const [departments, setDepartments] = useState([]);
+  const [downloadError, setDownloadError] = useState("");
+
+  async function handleDownload(fn) {
+    setDownloadError("");
+    try {
+      await fn();
+    } catch (err) {
+      setDownloadError(err.message || "Download failed");
+      setTimeout(() => setDownloadError(""), 6000);
+    }
+  }
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedSearch(search), 300);
+    return () => window.clearTimeout(t);
+  }, [search]);
 
   const refresh = useCallback(async ({ quiet = false } = {}) => {
     if (!quiet) setLoading(true);
     try {
-      const data = await apiFetch("/api/admin/dashboard");
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (departmentId) params.set("department_id", departmentId);
+      const qs = params.toString();
+      const data = await apiFetch(`/api/admin/dashboard${qs ? `?${qs}` : ""}`);
       if (hasProgramming) {
         const progData = await apiFetch("/api/programming/admin/dashboard");
         setProgrammingStats(progData);
@@ -284,13 +317,19 @@ export default function EdvolsAdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [hasProgramming]);
+  }, [hasProgramming, debouncedSearch, departmentId]);
 
   useEffect(() => {
     refresh();
     const id = window.setInterval(() => refresh({ quiet: true }), 30 * 1000);
     return () => window.clearInterval(id);
   }, [refresh]);
+
+  useEffect(() => {
+    apiFetch("/api/mentorship/admin/departments")
+      .then((res) => setDepartments(res.departments || []))
+      .catch(() => {});
+  }, []);
 
   if (error) {
     return (
@@ -380,6 +419,43 @@ export default function EdvolsAdminDashboard() {
         </section>
       ) : null}
 
+      {/* Filters */}
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 sm:mb-6">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="field min-w-[200px] flex-1">
+            <label className="mb-1 block text-xs font-semibold text-slate-600">Search</label>
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by name or email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
+              />
+            </div>
+          </div>
+          {departments.length > 0 && (
+            <div className="field w-full sm:w-52">
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Branch</label>
+              <div className="relative">
+                <select
+                  value={departmentId}
+                  onChange={(e) => setDepartmentId(e.target.value)}
+                  className="w-full appearance-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
+                >
+                  <option value="">All branches</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Year tabs */}
       <section className="mb-4 sm:mb-6">
         <div className="flex items-center gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1">
@@ -434,6 +510,9 @@ export default function EdvolsAdminDashboard() {
             <p className="mt-1 text-sm text-slate-500">Download Excel or PDF reports for institution review.</p>
           </div>
         </div>
+        {downloadError && (
+          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">{downloadError}</div>
+        )}
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {[
             ["student-performance", "Student performance"],
@@ -444,10 +523,10 @@ export default function EdvolsAdminDashboard() {
             <div key={type} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
               <span className="text-sm font-semibold text-slate-700">{label}</span>
               <div className="flex gap-1">
-                <button type="button" onClick={() => downloadAdminExport(type, "xlsx")} className="rounded-lg bg-white p-2 text-accent-700 hover:bg-accent-50" title={`${label} Excel`}>
+                <button type="button" onClick={() => handleDownload(() => downloadAdminExport(type, "xlsx", { department_id: departmentId, search: debouncedSearch }))} className="rounded-lg bg-white p-2 text-accent-700 hover:bg-accent-50" title={`${label} Excel`}>
                   <Download className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={() => downloadAdminExport(type, "pdf")} className="rounded-lg bg-white p-2 text-slate-700 hover:bg-slate-100" title={`${label} PDF`}>
+                <button type="button" onClick={() => handleDownload(() => downloadAdminExport(type, "pdf", { department_id: departmentId, search: debouncedSearch }))} className="rounded-lg bg-white p-2 text-slate-700 hover:bg-slate-100" title={`${label} PDF`}>
                   PDF
                 </button>
               </div>
@@ -457,15 +536,23 @@ export default function EdvolsAdminDashboard() {
             <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
               <span className="text-sm font-semibold text-slate-700">Coding progress</span>
               <div className="flex gap-1">
-                <button type="button" onClick={() => downloadCodingProgressExport("xlsx")} className="rounded-lg bg-white p-2 text-accent-700 hover:bg-accent-50" title="Coding progress Excel">
+                <button type="button" onClick={() => handleDownload(() => downloadCodingProgressExport("xlsx"))} className="rounded-lg bg-white p-2 text-accent-700 hover:bg-accent-50" title="Coding progress Excel">
                   <Download className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={() => downloadCodingProgressExport("pdf")} className="rounded-lg bg-white p-2 text-slate-700 hover:bg-slate-100" title="Coding progress PDF">
+                <button type="button" onClick={() => handleDownload(() => downloadCodingProgressExport("pdf"))} className="rounded-lg bg-white p-2 text-slate-700 hover:bg-slate-100" title="Coding progress PDF">
                   PDF
                 </button>
               </div>
             </div>
           ) : null}
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <span className="text-sm font-semibold text-slate-700">Branch overview PDF</span>
+            <div className="flex gap-1">
+              <button type="button" onClick={() => handleDownload(() => downloadMentorshipOverviewPdf(departmentId || (isDepartmentAdmin ? user.department_id : undefined)))} className="rounded-lg bg-white p-2 text-accent-700 hover:bg-accent-50" title="Download branch overview PDF">
+                <Download className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
