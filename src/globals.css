@@ -317,6 +317,60 @@ h6 {
   animation: shimmer 1.5s infinite;
 }
 
+/* GSAF-friendly micro-interaction classes */
+.hover-lift {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+}
+.hover-lift:active {
+  transform: translateY(0);
+}
+
+.hover-glow {
+  transition: box-shadow 0.25s ease, transform 0.2s ease;
+}
+.hover-glow:hover {
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15), 0 4px 12px rgba(5, 150, 105, 0.1);
+  transform: translateY(-1px);
+}
+
+.hover-scale {
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hover-scale:hover {
+  transform: scale(1.03);
+}
+.hover-scale:active {
+  transform: scale(0.98);
+}
+
+.nav-link-indicator {
+  position: relative;
+}
+.nav-link-indicator::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  box-shadow: inset 0 0 0 1px rgba(5, 150, 105, 0.2);
+}
+.nav-link-indicator:hover::after {
+  opacity: 1;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
 /* Metric bar fill */
 @keyframes fill-bar {
   from { width: 0%; }
@@ -361,3 +415,87 @@ html[data-assessment-fullscreen] .sidebar ~ * {
 .fade-slide-up-delay-2 { animation-delay: 0.2s; opacity: 0; }
 .fade-slide-up-delay-3 { animation-delay: 0.3s; opacity: 0; }
 .fade-slide-up-delay-4 { animation-delay: 0.4s; opacity: 0; }
+
+/* ── LiveKit Session Theme ── */
+/* Scoped so it doesn't leak into the rest of the app */
+.lk-session {
+  --radius: 0.625rem;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.269 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.371 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.439 0 0);
+
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.lk-session * {
+  border-color: oklch(1 0 0 / 20%);
+}
+
+.lk-session .bg-background { background-color: var(--background); }
+.lk-session .bg-accent { background-color: var(--accent); }
+.lk-session .bg-muted { background-color: var(--muted); }
+.lk-session .bg-card { background-color: var(--card); }
+.lk-session .bg-popover { background-color: var(--popover); }
+.lk-session .bg-secondary { background-color: var(--secondary); }
+.lk-session .bg-destructive\/10 { background-color: oklch(0.704 0.191 22.216 / 0.1); }
+.lk-session .bg-destructive\/20 { background-color: oklch(0.704 0.191 22.216 / 0.2); }
+.lk-session .bg-primary { background-color: var(--primary); }
+.lk-session .bg-foreground\/10 { background-color: oklch(0.985 0 0 / 0.1); }
+.lk-session .bg-foreground\/12 { background-color: oklch(0.985 0 0 / 0.12); }
+.lk-session .text-foreground { color: var(--foreground); }
+.lk-session .text-muted-foreground { color: var(--muted-foreground); }
+.lk-session .text-destructive { color: var(--destructive); }
+.lk-session .text-primary { color: var(--primary); }
+.lk-session .text-accent-foreground { color: var(--accent-foreground); }
+.lk-session .border-border { border-color: var(--border); }
+.lk-session .border-input { border-color: var(--input); }
+.lk-session .border-destructive\/20 { border-color: oklch(0.704 0.191 22.216 / 0.2); }
+.lk-session .border-ring { border-color: var(--ring); }
+.lk-session .bg-blue-500\/20 { background-color: rgb(59 130 246 / 0.2); }
+.lk-session .hover\:bg-blue-500\/30:hover { background-color: rgb(59 130 246 / 0.3); }
+.lk-session .border-blue-700\/10 { border-color: rgb(29 78 216 / 0.1); }
+.lk-session .text-blue-700 { color: rgb(29 78 216); }
+.lk-session .dark\:bg-blue-500\/20:is(.dark *) { background-color: rgb(59 130 246 / 0.2); }
+.lk-session .dark\:text-blue-300:is(.dark *) { color: rgb(147 197 253); }
+
+/* Radix data-state variants for lk-session */
+.lk-session [data-state=on] {
+  --lk-state-on: 1;
+}
+
+/* Agent audio visualizer defaults */
+.lk-session [data-lk-highlighted=true] {
+  background-color: currentColor;
+}
+
+/* Fade edges */
+.lk-session .fade-top {
+  background: linear-gradient(to bottom, var(--background), transparent);
+}
+.lk-session .fade-bottom {
+  background: linear-gradient(to top, var(--background), transparent);
+}

@@ -3,7 +3,7 @@ import { formatDateTime } from '../utils/api';
 
 export default function AssessmentCard({ assessment, action }) {
   return (
-    <article className="group rounded-md border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-card-hover">
+    <article className="hover-glow group rounded-md border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-card-hover">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h3 className="text-lg font-black text-slate-900">{assessment.title}</h3>

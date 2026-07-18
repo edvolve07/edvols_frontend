@@ -8,7 +8,7 @@ export default function StatCard({ label, value, tone = 'blue' }) {
   };
 
   return (
-    <div className={`relative overflow-hidden rounded-md border p-5 shadow-sm ${tones[tone] || tones.slate}`}>
+    <div className={`hover-lift relative overflow-hidden rounded-md border p-5 shadow-sm ${tones[tone] || tones.slate}`}>
       <div className="absolute right-0 top-0 h-16 w-16 translate-x-5 -translate-y-5 rounded-full bg-white/45" />
       <p className="relative text-sm font-bold opacity-80">{label}</p>
       <p className="relative mt-2 text-3xl font-black">{value}</p>

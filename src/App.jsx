@@ -1,6 +1,7 @@
 import { ChevronDown, Flame, Menu, Search, Sparkles } from "lucide-react";
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { PageTransition } from "./animations";
 import AccessRevoked from "@/src/pages/AccessRevoked";
 import AdminsList from "@/src/pages/admin/AdminsList";
 import AptitudePage from "@/src/pages/AptitudePage";
@@ -162,7 +163,9 @@ function AppShell({ children }) {
         </header>
 
         <main className="min-h-screen min-w-0 flex-1 overflow-x-hidden">
-          {children}
+          <PageTransition>
+            {children}
+          </PageTransition>
         </main>
       </div>
     </div>

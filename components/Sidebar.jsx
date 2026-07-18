@@ -1,10 +1,12 @@
 import { Link, usePathname } from "@/src/navigation";
-import { ChevronRight, Headphones, LogOut, PanelLeftClose, PanelLeftOpen, Sparkles } from "lucide-react";
+import { ChevronRight, Headphones, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import { APP_NAME, NAV_ITEMS } from "@/src/constants";
 import { useAuth } from "@/src/portal/context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
+import gsap from "gsap";
+import { useReducedMotion } from "@/src/animations";
 
 const MIN_SIDEBAR_WIDTH = 88;
 const DEFAULT_SIDEBAR_WIDTH = 288;
@@ -30,6 +32,25 @@ export default function Sidebar({ open = false, onClose = () => {}, width = DEFA
   const activeHref = visibleItems
     .filter((item) => path === item.href || path.startsWith(`${item.href}/`))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+
+  const navRef = useRef(null);
+  const bottomRef = useRef(null);
+  const reduced = useReducedMotion();
+
+  useEffect(() => {
+    if (reduced) return;
+    const ctx = gsap.context(() => {
+      const items = navRef.current?.querySelectorAll(":scope > a");
+      if (items?.length) {
+        gsap.fromTo(items, { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.35, stagger: 0.05, ease: "power2.out", delay: 0.1 });
+      }
+      const bottomEls = bottomRef.current?.children;
+      if (bottomEls?.length) {
+        gsap.fromTo(bottomEls, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.06, ease: "power2.out", delay: 0.25 });
+      }
+    });
+    return () => ctx.revert();
+  }, [visibleItems, reduced]);
 
   function handleLogout() {
     logout();
@@ -96,21 +117,9 @@ export default function Sidebar({ open = false, onClose = () => {}, width = DEFA
             <p className="mt-1.5 text-[12px] font-medium text-emerald-200">Placement readiness</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={toggleCompact}
-          title={compact ? "Expand sidebar" : "Shrink sidebar"}
-          aria-label={compact ? "Expand sidebar" : "Shrink sidebar"}
-          className={clsx(
-            "mt-3 hidden h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-white/10 text-white transition hover:bg-white/15 lg:flex",
-            compact ? "mx-auto" : "ml-[52px]",
-          )}
-        >
-          {compact ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
-        </button>
       </div>
 
-      <nav className={clsx("flex-1 space-y-2 overflow-y-auto pb-5", compact ? "px-2" : "px-3")}>
+      <nav ref={navRef} className={clsx("flex-1 space-y-2 overflow-y-auto pb-5", compact ? "px-2" : "px-3")}>
         {visibleItems.map(({ href, icon: Icon, label }) => {
           const active = activeHref === href;
           return (
@@ -129,9 +138,7 @@ export default function Sidebar({ open = false, onClose = () => {}, width = DEFA
         })}
       </nav>
 
-      <div className={clsx("space-y-4 pb-5", compact ? "px-2" : "px-5")}>
-        
-
+      <div ref={bottomRef} className={clsx("space-y-4 pb-5", compact ? "px-2" : "px-5")}>
         <Link
           href="/help"
           onClick={onClose}
@@ -153,6 +160,17 @@ export default function Sidebar({ open = false, onClose = () => {}, width = DEFA
         >
           <LogOut size={16} />
           <span className={clsx(compact && "hidden")}>Logout</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={toggleCompact}
+          title={compact ? "Expand sidebar" : "Shrink sidebar"}
+          aria-label={compact ? "Expand sidebar" : "Shrink sidebar"}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-emerald-200/70 transition hover:bg-white/10 hover:text-emerald-100"
+        >
+          {compact ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+          <span className={clsx(compact && "hidden")}>{compact ? "Expand" : "Shrink"}</span>
         </button>
       </div>
 

@@ -12,7 +12,8 @@ import {
   UserRound,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import gsap from 'gsap';
 
 const adminLinks = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -47,6 +48,17 @@ export default function Sidebar({ role }) {
       window.localStorage.setItem("portal-sidebar-width", String(sidebarWidth));
     }
   }, [sidebarWidth]);
+
+  const navRef = useRef(null);
+
+  useEffect(() => {
+    const items = navRef.current?.querySelectorAll(":scope > a");
+    if (!items?.length) return;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(items, { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.3, stagger: 0.04, ease: "power2.out" });
+    });
+    return () => ctx.revert();
+  }, [links]);
 
   function handleLogout() {
     logout();
@@ -119,7 +131,7 @@ export default function Sidebar({ role }) {
           </Link>
         </div>
 
-        <nav className={compact ? 'flex-1 space-y-2 overflow-y-auto px-2 pb-5' : 'flex-1 space-y-2 overflow-y-auto px-3 pb-5'}>
+        <nav ref={navRef} className={compact ? 'flex-1 space-y-2 overflow-y-auto px-2 pb-5' : 'flex-1 space-y-2 overflow-y-auto px-3 pb-5'}>
           {renderLinks(false)}
         </nav>
 

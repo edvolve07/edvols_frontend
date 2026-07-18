@@ -22,6 +22,7 @@ import { Link } from "@/src/navigation";
 import { useAuth } from "@/src/portal/context/AuthContext";
 import { apiFetch, downloadCertificatePdf } from "@/lib/api";
 import { getTimeBasedGreeting } from "@/src/utils/timeGreeting";
+import { Reveal, StaggerChildren, AnimatedCounter } from "@/src/animations";
 
 const moduleLabels = {
   aptitude: "Aptitude",
@@ -280,16 +281,18 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-[1480px] px-4 py-5 sm:px-6 lg:px-10 lg:py-7">
-      <section className="mb-8">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            {greeting}, {firstName}
-          </h1>
-          <p className="mt-1.5 text-base text-slate-500">
-            Your dashboard is synced to your current role, module access, and latest progress.
-          </p>
-        </div>
-      </section>
+      <Reveal>
+        <section className="mb-8">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              {greeting}, {firstName}
+            </h1>
+            <p className="mt-1.5 text-base text-slate-500">
+              Your dashboard is synced to your current role, module access, and latest progress.
+            </p>
+          </div>
+        </section>
+      </Reveal>
 
       {analyticsError ? (
         <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
@@ -297,8 +300,8 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      <section className="mb-7 grid gap-5 lg:grid-cols-[1fr_1.1fr]">
-        <article className="rounded-lg border border-slate-200 bg-white p-6">
+      <StaggerChildren className="mb-7 grid gap-5 lg:grid-cols-[1fr_1.1fr]">
+        <article className="hover-lift rounded-lg border border-slate-200 bg-white p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="eyebrow">Placement Readiness Score</p>
@@ -325,7 +328,7 @@ export default function DashboardPage() {
           </div>
         </article>
 
-        <article className="rounded-lg border border-slate-200 bg-white p-6">
+        <article className="hover-lift rounded-lg border border-slate-200 bg-white p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="eyebrow">Streaks, Badges, XP</p>
@@ -349,11 +352,11 @@ export default function DashboardPage() {
             <div className="h-full rounded-full bg-brand-600" style={{ width: `${readiness.score || 0}%` }} />
           </div>
         </article>
-      </section>
+      </StaggerChildren>
 
-      <section className="mb-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <StaggerChildren className="mb-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {statCards.map(({ label, value, caption, icon: Icon, tone }) => (
-          <article key={label} className="rounded-lg border border-slate-200 bg-white p-6">
+          <article key={label} className="hover-lift rounded-lg border border-slate-200 bg-white p-6">
             <div className="flex items-center gap-5">
               <div className={clsx("grid h-16 w-16 shrink-0 place-items-center rounded-full", toneClass[tone])}>
                 <Icon size={26} />
@@ -371,9 +374,10 @@ export default function DashboardPage() {
             </div>
           </article>
         ))}
-      </section>
+      </StaggerChildren>
 
-      <section className="mb-7 rounded-lg border border-slate-200 bg-white p-6">
+      <Reveal>
+        <section className="mb-7 rounded-lg border border-slate-200 bg-white p-6">
         <div className="flex items-center gap-3">
           <div className="grid h-12 w-12 place-items-center rounded-full bg-amber-100 text-amber-600">
             <Trophy size={22} />
@@ -386,7 +390,76 @@ export default function DashboardPage() {
           </div>
         </div>
       </section>
+      </Reveal>
 
+      <Reveal>
+        <section className="mb-7">
+          <div className="mb-5 flex items-center gap-2">
+            <Target size={20} className="text-brand-700" />
+            <h2 className="text-xl font-bold text-slate-900">Quick Access</h2>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {hasInterview ? (
+              <Link href="/interview" className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lg hover:shadow-brand-100/40">
+                <div className="absolute right-0 top-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-brand-50/50" />
+                <div className="relative flex items-start gap-4">
+                  <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-brand-100 text-brand-700">
+                    <Mic2 size={28} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-lg font-bold text-slate-900">Interview Prep</p>
+                    <p className="mt-1 text-sm text-slate-500">AI mock interviews with real-time feedback</p>
+                    <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand-700">
+                      Practice now
+                      <span className="inline-block transition-transform group-hover:translate-x-0.5">&rarr;</span>
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ) : null}
+
+            {hasProgramming ? (
+              <Link href="/programming/assessments" className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-lg hover:shadow-amber-100/40">
+                <div className="absolute right-0 top-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-amber-50/50" />
+                <div className="relative flex items-start gap-4">
+                  <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700">
+                    <Code2 size={28} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-lg font-bold text-slate-900">Coding Test</p>
+                    <p className="mt-1 text-sm text-slate-500">Timed coding assessments with multiple languages</p>
+                    <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-amber-700">
+                      Start test
+                      <span className="inline-block transition-transform group-hover:translate-x-0.5">&rarr;</span>
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ) : null}
+
+            {hasAptitude ? (
+              <Link href="/aptitude" className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-100/40">
+                <div className="absolute right-0 top-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-emerald-50/50" />
+                <div className="relative flex items-start gap-4">
+                  <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
+                    <BrainCircuit size={28} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-lg font-bold text-slate-900">Aptitude Test</p>
+                    <p className="mt-1 text-sm text-slate-500">Practice reasoning, math, and logic assessments</p>
+                    <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700">
+                      Take test
+                      <span className="inline-block transition-transform group-hover:translate-x-0.5">&rarr;</span>
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ) : null}
+          </div>
+        </section>
+      </Reveal>
+
+      <Reveal>
       <div className="grid gap-7 xl:grid-cols-[1.45fr_0.95fr]">
         <div className="space-y-7">
           <section className="rounded-lg border border-slate-200 bg-white p-6">
@@ -433,7 +506,7 @@ export default function DashboardPage() {
                 <Link
                   key={item.id}
                   href={item.href}
-                  className="rounded-lg border border-slate-200 bg-white p-4 transition hover:border-brand-200 hover:bg-brand-50/50"
+                  className="hover-lift rounded-lg border border-slate-200 bg-white p-4 transition hover:border-brand-200 hover:bg-brand-50/50"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -468,6 +541,7 @@ export default function DashboardPage() {
           </section>
 
           {hasInterview ? (
+            <Reveal>
             <section className="overflow-hidden rounded-lg border border-brand-100 bg-brand-50 p-6">
               <div className="grid gap-6 md:grid-cols-[1fr_310px] md:items-center">
                 <div>
@@ -488,11 +562,13 @@ export default function DashboardPage() {
                 </div>
               </div>
             </section>
+            </Reveal>
           ) : null}
         </div>
 
         <aside className="space-y-5">
-          <section className="rounded-lg border border-slate-200 bg-white p-6">
+          <Reveal>
+          <section className="hover-lift rounded-lg border border-slate-200 bg-white p-6">
             <div className="mb-4 flex items-center gap-2">
               <CalendarDays size={18} className="text-slate-500" />
               <h2 className="text-lg font-bold text-slate-900">Role Focus</h2>
@@ -512,8 +588,10 @@ export default function DashboardPage() {
               </Link>
             </div>
           </section>
+          </Reveal>
 
-          <section className="rounded-lg border border-slate-200 bg-white p-6">
+          <Reveal>
+          <section className="hover-lift rounded-lg border border-slate-200 bg-white p-6">
             <div className="mb-4 flex items-center gap-2">
               <FileText className="h-5 w-5 text-brand-700" />
               <h2 className="text-lg font-bold text-slate-900">Resume Builder</h2>
@@ -528,8 +606,10 @@ export default function DashboardPage() {
               Improve Resume
             </Link>
           </section>
+          </Reveal>
 
-          <section className="rounded-lg border border-slate-200 bg-white p-6">
+          <Reveal>
+          <section className="hover-lift rounded-lg border border-slate-200 bg-white p-6">
             <div className="mb-5 flex items-center gap-2">
               <Award className="h-5 w-5 text-brand-700" />
               <h2 className="text-lg font-bold text-slate-900">Certificates</h2>
@@ -566,8 +646,10 @@ export default function DashboardPage() {
               ) : null}
             </div>
           </section>
+          </Reveal>
 
-          <section className="rounded-lg border border-slate-200 bg-white p-6">
+          <Reveal>
+          <section className="hover-lift rounded-lg border border-slate-200 bg-white p-6">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-900">Recent Activity</h2>
               <Link href="/reports" className="text-sm font-semibold text-brand-700 hover:text-brand-900">
@@ -604,9 +686,11 @@ export default function DashboardPage() {
               ) : null}
             </div>
           </section>
+          </Reveal>
 
           {focusMetrics.length ? (
-            <section className="rounded-lg border border-slate-200 bg-white p-6">
+          <Reveal>
+            <section className="hover-lift rounded-lg border border-slate-200 bg-white p-6">
               <h2 className="text-lg font-bold text-slate-900">Focus Metrics</h2>
               <div className="mt-5 space-y-4">
                 {focusMetrics.map((metric) => (
@@ -622,9 +706,11 @@ export default function DashboardPage() {
                 ))}
               </div>
             </section>
+          </Reveal>
           ) : null}
         </aside>
       </div>
+      </Reveal>
     </div>
   );
 }

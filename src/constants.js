@@ -160,6 +160,27 @@ export const METRIC_COLORS = {
   skill_relevance: "#8b5cf6",
 };
 
+export const COMMUNICATION_MODES = [
+  { id: 'general', label: 'General', icon: MessageSquareText },
+  { id: 'interview_prep', label: 'Interview Prep', icon: Mic2 },
+];
+
+export const GENERAL_SCENARIOS = [
+  'Everyday Conversation & Small Talk',
+  'Active Listening & Empathy',
+  'Assertive Communication',
+  'Conflict Resolution & Difficult Conversations',
+  'Persuasion & Influence',
+  'Public Speaking & Presentations',
+  'Networking & Professional Introductions',
+  'Giving & Receiving Feedback',
+  'Cross-Cultural Communication',
+  'Storytelling & Narrative Skills',
+  'Team Collaboration & Meetings',
+  'Client & Stakeholder Communication',
+  'Crisis Communication',
+];
+
 export const COMMUNICATION_CATEGORIES = [
   'Tell Me About Yourself',
   'Behavioral Questions (STAR)',
