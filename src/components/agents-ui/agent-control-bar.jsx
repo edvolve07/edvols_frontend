@@ -130,7 +130,7 @@ export function AgentControlBar({
         variant === 'livekit' ? 'rounded-[31px]' : 'rounded-lg', className)} {...props}
     >
       <motion.div {...MOTION_PROPS}
-        inert={(!(isChatOpen || isChatOpenUncontrolled)).toString()}
+        inert={isChatOpen || isChatOpenUncontrolled ? null : ''}
         animate={isChatOpen || isChatOpenUncontrolled ? 'visible' : 'hidden'}
         className="border-input/50 flex w-full items-start overflow-hidden border-b"
       >

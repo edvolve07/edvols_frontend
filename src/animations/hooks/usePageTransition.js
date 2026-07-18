@@ -19,7 +19,7 @@ export function usePageTransition() {
       gsap.fromTo(
         el,
         { opacity: 0, y: DISTANCE.up },
-        { opacity: 1, y: 0, duration: DURATION.pageEnter, ease: EASE.smooth, clearProps: "willChange" }
+        { opacity: 1, y: 0, duration: DURATION.pageEnter, ease: EASE.smooth, clearProps: "transform,willChange" }
       );
     });
 

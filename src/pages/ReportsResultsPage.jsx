@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, ArrowLeft, ArrowRight, BarChart3, FileText, Loader2, Mic2, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, BarChart3, FileText, Loader2, MessageSquareText, Mic2, X } from "lucide-react";
 import { getInterviewReports, getStudentResults } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { Link, useNavigate, useSearchParams } from "@/src/navigation";
 import ReportPage from "./ReportPage";
+import CommunicationReport from "./CommunicationReport";
 
 function formatDateTime(value) {
   if (!value) return "Open";
@@ -282,10 +284,105 @@ function InterviewReportsList({ onMoreDetails }) {
   );
 }
 
+function CommunicationReportsList({ onView }) {
+  const [reports, setReports] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    apiFetch("/api/communication/student/reports")
+      .then((data) => {
+        if (active) setReports(data.reports || []);
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err.message || "Unable to load communication reports.");
+          setReports([]);
+        }
+      });
+
+    return () => { active = false; };
+  }, []);
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+        {error}
+      </div>
+    );
+  }
+
+  if (!reports) {
+    return (
+      <div className="flex items-center justify-center rounded-xl border border-slate-100 bg-slate-50 px-4 py-10 text-sm font-medium text-slate-500">
+        <Loader2 size={18} className="mr-2 animate-spin text-emerald-500" />
+        Loading communication reports
+      </div>
+    );
+  }
+
+  if (reports.length === 0) {
+    return (
+      <div className="rounded-xl border border-slate-100 bg-slate-50 p-5">
+        <div className="flex gap-3">
+          <AlertCircle size={18} className="mt-0.5 flex-shrink-0 text-slate-400" />
+          <div>
+            <p className="text-sm font-semibold text-slate-900">No communication practice reports saved yet.</p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Complete a communication practice session and the AI coach will generate a personalized report.
+            </p>
+            <Link
+              href="/communication"
+              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-card transition hover:bg-emerald-600"
+            >
+              Start Practice <MessageSquareText size={15} />
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      {reports.map((report) => (
+        <article
+          key={report.session_id}
+          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-black text-slate-950">{report.category || "Communication Practice"}</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                {report.generated_date || formatDateTime(report.created_at)} · {report.report_id}
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-2xl font-black text-slate-950">{report.grade || "--"}</p>
+                <p className="text-sm font-bold text-emerald-700">{Math.round(report.percentage || 0)}%</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onView(report.session_id)}
+                className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-card transition hover:bg-emerald-600"
+              >
+                View Report
+              </button>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export default function ReportsResultsPage() {
   const params = useSearchParams();
   const sessionId = params.get("session");
   const [selectedInterviewSessionId, setSelectedInterviewSessionId] = useState(sessionId || "");
+  const [selectedCommSessionId, setSelectedCommSessionId] = useState("");
 
   useEffect(() => {
     if (sessionId) setSelectedInterviewSessionId(sessionId);
@@ -316,6 +413,19 @@ export default function ReportsResultsPage() {
         <InterviewReportsList onMoreDetails={setSelectedInterviewSessionId} />
       </section>
 
+      <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-card">
+        <div className="mb-5 flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+            <MessageSquareText size={16} />
+          </span>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-800">
+            Communication Practice Reports
+          </h2>
+        </div>
+
+        <CommunicationReportsList onView={setSelectedCommSessionId} />
+      </section>
+
       <AssessmentResultsList />
 
       {selectedInterviewSessionId ? (
@@ -337,6 +447,30 @@ export default function ReportsResultsPage() {
             </div>
             <div className="overflow-y-auto bg-slate-50">
               <ReportPage sessionId={selectedInterviewSessionId} showQuestionBreakdownInline />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {selectedCommSessionId ? (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
+          <div className="mx-auto flex max-h-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-emerald-600">Communication practice report</p>
+                <h2 className="mt-1 text-xl font-semibold text-slate-950">Coaching report</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCommSessionId("")}
+                className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+                aria-label="Close communication report details"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="overflow-y-auto bg-slate-50">
+              <CommunicationReport sessionId={selectedCommSessionId} onClose={() => setSelectedCommSessionId("")} />
             </div>
           </div>
         </div>

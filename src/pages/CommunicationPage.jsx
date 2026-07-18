@@ -1,13 +1,41 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { Component, useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { TokenSource } from 'livekit-client';
 import { useSession, SessionProvider, useSessionContext, RoomAudioRenderer } from '@livekit/components-react';
-import { AnimatePresence, motion } from 'motion/react';
-import { Loader2, Sparkles, MessageSquareText, Mic2 } from 'lucide-react';
+import { Loader2, Sparkles, MessageSquareText, Mic2, AlertCircle, CheckCircle, RefreshCw, FileText, Brain, MessageCircle, BarChart3, Target } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import { useNavigate } from '@/src/navigation';
 import { COMMUNICATION_MODES, GENERAL_SCENARIOS, COMMUNICATION_CATEGORIES, COMMUNICATION_WORKFLOW } from '@/src/constants';
 import { AgentSessionView_01 } from '../components/agents-ui/blocks/agent-session-view-01';
 import { StartAudioButton } from '../components/agents-ui/start-audio-button';
 import { Button } from '../components/ui/button';
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-red-100 p-4" style={{ background: '#fef2f2', color: '#000' }}>
+          <div className="max-w-2xl rounded-xl bg-white p-8 text-center shadow-2xl" style={{ background: '#fff' }}>
+            <AlertCircle className="mx-auto mb-4 h-12 w-12 text-red-500" />
+            <h2 className="text-lg font-bold text-slate-900">Something went wrong</h2>
+            <p className="mt-2 text-sm text-slate-600">{this.state.error.message}</p>
+            <pre className="mt-4 max-w-xl mx-auto overflow-auto rounded-lg bg-slate-100 p-4 text-left text-xs text-slate-600" style={{ background: '#f1f5f9' }}>{this.state.error.stack}</pre>
+            <button onClick={() => this.setState({ error: null })} className="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700" style={{ background: '#059669', color: '#fff', padding: '8px 16px', borderRadius: '8px' }}>
+              Try again
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const STORAGE_KEY = 'lk-interview';
 
@@ -137,40 +165,242 @@ function WelcomeImage() {
   );
 }
 
-function WelcomeView({ onStartCall, startButtonText }) {
+function ReconnectingOverlay() {
   return (
-    <section className="bg-background flex flex-col items-center justify-center text-center">
-      <WelcomeImage />
-      <p className="text-foreground max-w-prose pt-1 leading-6 font-medium">
-        Chat live with your voice AI agent
-      </p>
-      <Button size="lg" onClick={onStartCall}
-        className="mt-6 w-64 rounded-full font-mono text-xs font-bold tracking-wider uppercase">
-        {startButtonText || 'Start'}
-      </Button>
-    </section>
+    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-white">
+      <div className="text-center max-w-md">
+        <RefreshCw className="h-12 w-12 animate-spin text-emerald-500 mb-6 mx-auto" />
+        <h2 className="text-xl font-bold text-slate-800 mb-2">Reconnecting to your session...</h2>
+        <p className="text-sm text-slate-500">Hang tight! Your conversation is being restored.</p>
+      </div>
+    </div>
   );
 }
 
-function SessionContent({ mode, category, onComplete }) {
-  const { room } = useSessionContext(); // Get the room object from session context
-  const [exchanges, setExchanges] = useState([]); // Collect all exchanges
-  const [isSessionComplete, setIsSessionComplete] = useState(false);
-  const [reportData, setReportData] = useState(null);
-  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const hasConnected = useRef(false);
+const FINALIZE_STAGES = [
+  { id: 'finalize', label: 'Finalizing session', icon: CheckCircle },
+  { id: 'transcript', label: 'Persisting transcript', icon: FileText },
+  { id: 'analyze', label: 'Analyzing conversation', icon: Brain },
+  { id: 'evaluate', label: 'Evaluating communication', icon: MessageCircle },
+  { id: 'scores', label: 'Computing scores', icon: BarChart3 },
+  { id: 'plan', label: 'Building improvement plan', icon: Target },
+  { id: 'compose', label: 'Composing report', icon: FileText },
+  { id: 'save', label: 'Saving report', icon: CheckCircle },
+  { id: 'done', label: 'Report ready', icon: CheckCircle },
+];
 
-  // Listen for data messages from the agent
+function FinalizingScreen({ status, error, onRetry, exchangeCount }) {
+  const isFailed = status === 'FAILED';
+  const isComplete = status === 'COMPLETED';
+  const stageIdx = isFailed
+    ? FINALIZE_STAGES.length - 2
+    : isComplete
+      ? FINALIZE_STAGES.length - 1
+      : Math.min(3, FINALIZE_STAGES.length - 2);
+
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white">
+      <div className="w-full max-w-md px-6">
+        {isFailed ? (
+          <AlertCircle className="h-14 w-14 text-red-500 mb-5 mx-auto" />
+        ) : isComplete ? (
+          <CheckCircle className="h-14 w-14 text-emerald-500 mb-5 mx-auto" />
+        ) : (
+          <Loader2 className="h-14 w-14 animate-spin text-emerald-500 mb-5 mx-auto" />
+        )}
+        <h2 className="text-2xl font-bold text-slate-800 text-center mb-2">
+          {isFailed ? 'Report generation failed' : isComplete ? 'Report ready!' : 'Preparing your personalized coaching report'}
+        </h2>
+        <p className="text-sm text-slate-500 text-center mb-6">
+          {isFailed
+            ? 'Something went wrong while generating your report. You can retry below.'
+            : isComplete
+              ? 'Opening your coaching report...'
+              : `Analyzing ${exchangeCount || 0} conversation exchange${(exchangeCount || 0) !== 1 ? 's' : ''} across multiple AI stages. This usually takes 15–60 seconds.`}
+        </p>
+
+        {!isFailed && (
+          <div className="space-y-2 mb-2">
+            {FINALIZE_STAGES.map((stage, i) => {
+              const reached = i <= stageIdx;
+              const Icon = stage.icon;
+              return (
+                <div key={stage.id}
+                  className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition-all ${
+                    reached
+                      ? i === stageIdx && !isComplete
+                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                        : 'bg-slate-50 text-slate-500'
+                      : 'bg-white text-slate-300'
+                  }`}>
+                  {reached && i === stageIdx && !isComplete ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-emerald-500 shrink-0" />
+                  ) : (
+                    <Icon className={`h-4 w-4 shrink-0 ${reached && isComplete ? 'text-emerald-500' : reached ? 'text-emerald-500' : 'text-slate-300'}`} />
+                  )}
+                  <span className={`font-semibold ${reached && isComplete ? 'text-emerald-700' : ''}`}>{stage.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {isFailed && (
+          <div className="rounded-xl border border-red-100 bg-red-50 p-4 mb-4 text-sm text-red-700">
+            <p className="font-semibold mb-1">Error</p>
+            <p className="text-xs leading-relaxed">{error || 'Unknown error'}</p>
+          </div>
+        )}
+
+        {isFailed && (
+          <button onClick={onRetry}
+            className="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-200/60 hover:bg-emerald-700 transition-all">
+            <RefreshCw className="h-4 w-4" /> Retry report generation
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function useSessionFinalizer(conversationId, exchangesRef, opts = {}) {
+  const [status, setStatus] = useState('PENDING');
+  const [error, setError] = useState(null);
+  const [exchangeCount, setExchangeCount] = useState(0);
+  const [reportSessionId, setReportSessionId] = useState(null);
+  const startedRef = useRef(false);
+  const pollRef = useRef(null);
+
+  const stop = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  const poll = useCallback(async () => {
+    if (!conversationId) return;
+    try {
+      const resp = await apiFetch(`/api/communication/student/sessions/${conversationId}/report-status`);
+      if (resp.status === 'COMPLETED') {
+        setStatus('COMPLETED');
+        setReportSessionId(resp.report_session_id || null);
+        stop();
+      } else if (resp.status === 'FAILED') {
+        setStatus('FAILED');
+        setError(resp.error || 'Unknown error');
+        stop();
+      } else if (resp.status === 'PROCESSING') {
+        setStatus('PROCESSING');
+      }
+    } catch (e) {
+    }
+  }, [conversationId, stop]);
+
+  const start = useCallback(async ({ exchanges: providedExchanges = null, reason = 'manual' } = {}) => {
+    if (!conversationId) return;
+    if (startedRef.current) return;
+    startedRef.current = true;
+    setStatus('PROCESSING');
+    setError(null);
+    const exchs = providedExchanges || exchangesRef.current || [];
+    setExchangeCount((exchs || []).length);
+
+    try {
+      await apiFetch(`/api/communication/student/sessions/${conversationId}/finalize`, {
+        method: 'POST',
+        body: JSON.stringify({ exchanges: exchs, reason }),
+      });
+    } catch (e) {
+      setStatus('FAILED');
+      setError(e.message || 'Failed to start finalization');
+      startedRef.current = false;
+      return;
+    }
+
+    pollRef.current = setInterval(poll, 2000);
+    poll();
+  }, [conversationId, exchangesRef, poll]);
+
+  const retry = useCallback(() => {
+    startedRef.current = false;
+    start();
+  }, [start]);
+
+  useEffect(() => () => stop(), [stop]);
+
+  return { status, error, exchangeCount, reportSessionId, start, retry, poll };
+}
+
+function SessionContent({ mode, category, onComplete, conversationId, initialExchanges }) {
+  const navigate = useNavigate();
+  const { room } = useSessionContext();
+  const [exchanges, setExchanges] = useState(initialExchanges || []);
+  const exchangesRef = useRef(exchanges);
+
+  exchangesRef.current = exchanges;
+
+  const finalizer = useSessionFinalizer(conversationId, exchangesRef);
+  const hasFinalizedRef = useRef(false);
+  const syncTimerRef = useRef(null);
+
+  const triggerFinalization = useCallback((reason = 'agent_complete') => {
+    if (hasFinalizedRef.current) return;
+    hasFinalizedRef.current = true;
+    finalizer.start({ exchanges: exchangesRef.current, reason });
+  }, [finalizer]);
+
+  const handleFinalizedNavigate = useCallback(() => {
+    if (!finalizer.reportSessionId) return;
+    onComplete();
+    navigate(`/communication/report?session=${finalizer.reportSessionId}`);
+  }, [finalizer.reportSessionId, navigate, onComplete]);
+
+  useEffect(() => {
+    if (finalizer.status === 'COMPLETED' && !finalizer.reportSessionId) {
+      finalizer.poll();
+    }
+    if (finalizer.status === 'COMPLETED' && finalizer.reportSessionId) {
+      const timer = setTimeout(handleFinalizedNavigate, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [finalizer.status, finalizer.reportSessionId, finalizer.poll, handleFinalizedNavigate]);
+
+  const syncExchanges = useCallback(async (exchs) => {
+    if (!conversationId) return;
+    try {
+      await apiFetch(`/api/livekit/conversation/${conversationId}/sync`, {
+        method: 'POST',
+        body: JSON.stringify({ exchanges: exchs }),
+      });
+    } catch (e) { }
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!conversationId || exchanges.length === 0) return;
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => syncExchanges(exchangesRef.current), 2000);
+    return () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    };
+  }, [exchanges, conversationId, syncExchanges]);
+
+  useEffect(() => {
+    return () => {
+      if (conversationId && exchangesRef.current.length > 0) {
+        syncExchanges(exchangesRef.current);
+      }
+    };
+  }, [conversationId, syncExchanges]);
+
   useEffect(() => {
     if (!room) return;
 
-    const handleDataReceived = (data, participant) => {
+    const handleDataReceived = (data) => {
       try {
         const payload = JSON.parse(Array.from(data));
-
-        if (payload.type === "evaluation") {
-          // Store the exchange data
-          setExchanges(prev => [...prev, {
+        if (payload.type === 'evaluation') {
+          setExchanges((prev) => [...prev, {
             exchange_number: payload.exchange_number,
             eliciting_prompt: payload.eliciting_prompt,
             transcript: payload.transcript,
@@ -181,400 +411,221 @@ function SessionContent({ mode, category, onComplete }) {
             next_prompt: payload.next_prompt,
             is_last: payload.is_last,
             video_context: payload.video_context,
-            mode: payload.mode
+            mode: payload.mode,
           }]);
-        } else if (payload.type === "complete") {
-          setIsSessionComplete(true);
-          // Generate report when session completes
-          generateReport();
+        } else if (payload.type === 'complete') {
+          triggerFinalization('agent_complete');
         }
       } catch (e) {
-        console.error("Error processing data message:", e);
+        console.error('Error processing data message:', e);
       }
     };
 
-    room.on("dataReceived", handleDataReceived);
+    room.on('dataReceived', handleDataReceived);
+    return () => { room.off('dataReceived', handleDataReceived); };
+  }, [room, triggerFinalization]);
 
-    return () => {
-      room.off("dataReceived", handleDataReceived);
-    };
-  }, [room]);
+  const handleEndCall = useCallback(() => {
+    triggerFinalization('user_end_call');
+  }, [triggerFinalization]);
 
-  // Generate report from collected exchanges
-  const generateReport = async () => {
-    if (isGeneratingReport || !exchanges.length) return;
-
-    setIsGeneratingReport(true);
-    try {
-      // Prepare exchange data in the format expected by generateCommunicationReport
-      const exchangeData = exchanges.map(ex => ({
-        // We'll send the raw exchange data to backend for report generation
-        // Or we could compute it here - let's send to backend to reuse existing logic
-        eliciting_prompt: ex.eliciting_prompt || "",
-        transcript: ex.transcript || "",
-        evaluation: ex.evaluation || {},
-        feedback: ex.feedback || "",
-        strengths: ex.strengths || [],
-        improvements: ex.improvements || [],
-        // Note: next_prompt is the prompt for next turn, not needed for current exchange eval
-      }));
-
-      // Call backend to generate communication report
-      const response = await apiFetch('/api/communication-report', {
-        method: 'POST',
-        body: JSON.stringify({
-          exchanges: exchangeData,
-          category: category,
-          mode: mode
-        })
-      });
-
-      setReportData(response);
-    } catch (error) {
-      console.error("Failed to generate communication report:", error);
-      // Fallback: generate a basic report from collected data
-      setReportData(generateFallbackReport(exchanges, category));
-    } finally {
-      setIsGeneratingReport(false);
+  if (finalizer.status === 'PROCESSING' || finalizer.status === 'PENDING' || finalizer.status === 'FAILED' || finalizer.status === 'COMPLETED') {
+    if (finalizer.status === 'PENDING' && !hasFinalizedRef.current) {
+      return (
+        <AgentSessionView_01
+          supportsChatInput={true}
+          supportsVideoInput={true}
+          supportsScreenShare={true}
+          audioVisualizerType="bar"
+          audioVisualizerColor="#34d399"
+          audioVisualizerColorShift={0.3}
+          audioVisualizerBarCount={5}
+          onDisconnect={handleEndCall}
+        />
+      );
     }
-  };
-
-  // Fallback report generation if backend fails
-  const generateFallbackReport = (exchanges, category) => {
-    if (!exchanges.length) return null;
-
-    // Simple aggregation of scores
-    const totals = {
-      clarity: 0, structure: 0, conciseness: 0, relevance: 0, confidence_tone: 0,
-      engagement: 0, listening_skills: 0, professionalism: 0,
-      coherence: 0, empathy: 0, adaptability: 0, confidence: 0, authenticity: 0
-    };
-
-    let count = 0;
-    const allStrengths = [];
-    const allImprovements = [];
-    const allFeedback = [];
-
-    exchanges.forEach(ex => {
-      const evalData = ex.evaluation;
-      Object.keys(totals).forEach(key => {
-        if (evalData[key] !== undefined) {
-          totals[key] += evalData[key];
-        }
-      });
-      count++;
-
-      if (ex.strengths) allStrengths.push(...ex.strengths);
-      if (ex.improvements) allImprovements.push(...ex.improvements);
-      if (ex.feedback) allFeedback.push(ex.feedback);
-    });
-
-    const averages = {};
-    Object.keys(totals).forEach(key => {
-      averages[key] = count > 0 ? Math.round(totals[key] / count * 10) / 10 : 0;
-    });
-
-    // Get most common strengths/improvements
-    const getTopItems = (items, limit = 3) => {
-      const counts = {};
-      items.forEach(item => {
-        counts[item] = (counts[item] || 0) + 1;
-      });
-      return Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, limit)
-        .map(([item]) => item);
-    };
-
-    return {
-      strengths: getTopItems(allStrengths),
-      areas_to_improve: getTopItems(allImprovements),
-      tips: [
-        "Focus on being clear and concise in your responses",
-        "Use specific examples to illustrate your points",
-        "Maintain eye contact and open body language",
-        "Practice active listening before responding",
-        "Structure your answers with a clear beginning, middle, and end"
-      ],
-      category_insights: {
-        category_mastery: `You demonstrated ${communicationskilllevel(averages.confidence_tone)} confidence in ${category.toLowerCase()} communication.`,
-        key_takeaway: "Consistent practice with feedback is the fastest way to improve communication skills.",
-        recommended_focus: determineFocusArea(averages)
-      },
-      real_world_preparation: [
-        "In real conversations, pause for 2-3 seconds before responding to gather your thoughts",
-        "Ask clarifying questions to ensure you understand the topic fully",
-        "Use the 'PREP' framework: Point, Reason, Example, Point",
-        "Record yourself practicing to identify areas for improvement",
-        "Seek feedback from trusted colleagues or mentors"
-      ],
-      competency_analysis: {
-        demonstrated_competencies: determineDemonstratedCompetencies(averages),
-        competencies_to_develop: determineUndevelopedCompetencies(averages),
-        communication_style: determineCommunicationStyle(averages)
-      }
-    };
-  };
-
-  // Helper functions for fallback report
-  const communicationskilllevel = (score) => {
-    if (score >= 8) return "high";
-    if (score >= 6) return "moderate";
-    return "developing";
-  };
-
-  const determineFocusArea = (averages) => {
-    const sorted = Object.entries(averages)
-      .filter(([key]) =>
-        ["clarity", "structure", "conciseness", "relevance", "confidence_tone"].includes(key))
-      .sort((a, b) => a[1] - b[1]);
-    return sorted[0] ? `Focus on improving ${sorted[0][0]} (currently ${sorted[0][1]}/10)` : "Continue balanced practice";
-  };
-
-  const determineDemonstratedCompetencies = (averages) => {
-    const competencies = [];
-    if (averages.clarity >= 7) competencies.push("Clear Expression");
-    if (averages.structure >= 7) competencies.push("Organized Thinking");
-    if (averages.confidence_tone >= 7) competencies.push("Confident Delivery");
-    if (averages.engagement >= 7) competencies.push("Audience Engagement");
-    return competencies;
-  };
-
-  const determineUndevelopedCompetencies = (averages) => {
-    const competencies = [];
-    if (averages.clarity < 6) competencies.push("Clarity of Expression");
-    if (averages.structure < 6) competencies.push("Logical Structure");
-    if (averages.confidence_tone < 6) competencies.push("Vocal Confidence");
-    if (averages.engagement < 6) competencies.push("Audience Connection");
-    return competencies;
-  };
-
-  const determineCommunicationStyle = (averages) => {
-    if (averages.confidence_tone >= 7 && averages.clarity >= 7)
-      return "Confident and articulate";
-    if (averages.empathy >= 7 && averages.engagement >= 7)
-      return "Warm and engaging";
-    if (averages.structure >= 7)
-      return "Well-organized and systematic";
-    return "Developing with room for growth";
-  };
-
-  useEffect(() => {
-    if (room) {
-      if (room.connectionState === "connected") {
-        hasConnected.current = true;
-      } else if (hasConnected.current && room.connectionState === "disconnected") {
-        onComplete();
-      }
-    }
-  }, [room, onComplete]);
-
-  if (isSessionComplete && reportData) {
-    // Show report view
     return (
-      <div className="min-h-svh flex flex-col">
-        <header className="flex items-center justify-between bg-white px-5 py-4 border-b">
-          <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-            Communication Practice Complete
-          </span>
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="space-y-6">
-            {/* Strengths */}
-            <div>
-              <h3 className="font-semibold text-slate-800 mb-2">Strengths</h3>
-              <ul className="space-y-1 text-slate-700">
-                {reportData.strengths.map((strength, idx) => (
-                  <li key={idx} className="flex items-start">
-                    <span className="flex-shrink-0">• </span>
-                    <span>{strength}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Areas to Improve */}
-            <div>
-              <h3 className="font-semibold text-slate-800 mb-2">Areas for Improvement</h3>
-              <ul className="space-y-1 text-slate-700">
-                {reportData.areas_to_improve.map((area, idx) => (
-                  <li key={idx} className="flex items-start">
-                    <span className="flex-shrink-0">• </span>
-                    <span>{area}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Tips */}
-            <div>
-              <h3 className="font-semibold text-slate-800 mb-2">Improvement Tips</h3>
-              <ul className="space-y-1 text-slate-700">
-                {reportData.tips.map((tip, idx) => (
-                  <li key={idx} className="flex items-start">
-                    <span className="flex-shrink-0">• </span>
-                    <span>{tip}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Category Insights */}
-            <div className="bg-slate-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-slate-800 mb-2">Category Insights</h3>
-              <p className="text-slate-700">{reportData.category_insights.category_mastery}</p>
-              <p className="text-slate-700 mt-1">{reportData.category_insights.key_takeaway}</p>
-              <p className="text-slate-700 mt-1">{reportData.category_insights.recommended_focus}</p>
-            </div>
-
-            {/* Competency Analysis */}
-            <div className="bg-slate-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-slate-800 mb-2">Competency Analysis</h3>
-              <div className="space-y-3">
-                <div>
-                  <h4 className="font-medium text-slate-800">Demonstrated Strengths</h4>
-                  <ul className="list-disc list-inside text-slate-700 space-y-1">
-                    {reportData.competency_analysis.demonstrated_competencies.map((comp, idx) => (
-                      <li key={idx}>{comp}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-medium text-slate-800">Areas to Develop</h4>
-                  <ul className="list-disc list-inside text-slate-700 space-y-1">
-                    {reportData.competency_analysis.competencies_to_develop.map((comp, idx) => (
-                      <li key={idx}>{comp}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-medium text-slate-800">Communication Style</h4>
-                  <p className="text-slate-700">{reportData.competency_analysis.communication_style}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Real World Preparation */}
-            <div className="bg-slate-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-slate-800 mb-2">Real-World Preparation Tips</h3>
-              <ol className="list-decimal list-inside text-slate-700 space-y-2">
-                {reportData.real_world_preparation.map((tip, idx) => (
-                  <li key={idx}>{tip}</li>
-                ))}
-              </ol>
-            </div>
-          </div>
-        </main>
-
-        <div className="flex items-center justify-center pt-4 pb-6">
-          <Button
-            variant="outline"
-            onClick={() => {
-              // Reset for potential new session
-              setExchanges([]);
-              setIsSessionComplete(false);
-              setReportData(null);
-              onComplete(); // This will trigger cleanup and return to setup
-            }}
-          >
-            Start New Session
-          </Button>
-        </div>
-      </div>
+      <FinalizingScreen
+        status={finalizer.status}
+        error={finalizer.error}
+        exchangeCount={exchanges.length || finalizer.exchangeCount}
+        onRetry={() => { finalizer.retry(); }}
+      />
     );
   }
 
-  if (isGeneratingReport && !reportData) {
-    return (
-      <div className="min-h-svh flex flex-col items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-500 mb-4" />
-          <p className="text-slate-600">Generating your communication report...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Default session view
   return (
-    <>
-      <header className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between bg-white px-5 py-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="truncate text-xs font-bold uppercase tracking-wider text-emerald-400">
-            {mode === 'general' ? 'General' : 'Interview Prep'} — {category}
-          </span>
-        </div>
-      </header>
-
-      <main className="grid h-svh grid-cols-1 place-content-center">
-        <AnimatePresence mode="wait">
-          {/* Session view when connected */}
-          <AgentSessionView_01
-            supportsChatInput={true}
-            supportsVideoInput={true}
-            supportsScreenShare={true}
-            audioVisualizerType="bar"
-            audioVisualizerColor="#34d399"
-            audioVisualizerColorShift={0.3}
-            audioVisualizerBarCount={5}
-            className="fixed inset-0"
-          />
-        </AnimatePresence>
-      </main>
-
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center pb-2">
-        <StartAudioButton label="Start Audio" />
-      </div>
-    </>
+    <AgentSessionView_01
+      supportsChatInput={true}
+      supportsVideoInput={true}
+      supportsScreenShare={true}
+      audioVisualizerType="bar"
+      audioVisualizerColor="#34d399"
+      audioVisualizerColorShift={0.3}
+      audioVisualizerBarCount={5}
+      onDisconnect={handleEndCall}
+    />
   );
 }
 
-function SessionView({ roomInfo, onComplete }) {
+function SessionView({ roomInfo, onComplete, conversationId, initialExchanges }) {
   const tokenSource = useMemo(() => {
     const serverUrl = import.meta.env.VITE_LIVEKIT_URL || 'ws://localhost:7880';
     return TokenSource.custom(async () => ({
-      serverUrl,
-      participantToken: roomInfo.token,
+      server_url: serverUrl,
+      participant_token: roomInfo.token,
     }));
   }, [roomInfo]);
 
   const session = useSession(tokenSource);
+  const didStart = useRef(false);
+
+  useEffect(() => {
+    if (didStart.current) return;
+    didStart.current = true;
+    let cancelled = false;
+
+    session.start().catch((err) => {
+      if (cancelled) return;
+      console.error('Session start failed:', err);
+      alert('Could not connect to practice session. Please try again.');
+      onComplete();
+    });
+
+    return () => { cancelled = true; };
+  }, [session, onComplete]);
 
   return (
     <SessionProvider session={session}>
-      <SessionContent mode={roomInfo.mode} category={roomInfo.category} onComplete={onComplete} />
-      <RoomAudioRenderer />
+      <div className="lk-session fixed inset-0 z-[100] overflow-hidden">
+        <SessionContent mode={roomInfo.mode} category={roomInfo.category} onComplete={onComplete}
+          conversationId={conversationId} initialExchanges={initialExchanges} />
+        <RoomAudioRenderer />
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110]">
+          <StartAudioButton label="Start Audio" />
+        </div>
+      </div>
     </SessionProvider>
   );
 }
 
 export default function CommunicationPage() {
   const [roomInfo, setRoomInfo] = useState(null);
+  const [reconnecting, setReconnecting] = useState(false);
+  const [initialExchanges, setInitialExchanges] = useState(null);
+  const [conversationId, setConversationId] = useState(null);
+  const reconnectionDone = useRef(false);
+
+  useEffect(() => {
+    if (reconnectionDone.current) return;
+
+    async function tryReconnect() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) return;
+
+      let parsed;
+      try { parsed = JSON.parse(stored); } catch { return; }
+      if (!parsed.conversationId && !parsed.room) return;
+
+      setReconnecting(true);
+      reconnectionDone.current = true;
+
+      try {
+        let convData = null;
+        if (parsed.conversationId) {
+          const resp = await apiFetch(`/api/livekit/conversation/${parsed.conversationId}`);
+          if (!resp || resp.status === 'expired' || resp.status === 'ended') {
+            throw new Error('Session expired or ended');
+          }
+          convData = resp;
+        }
+
+        const roomName = convData?.room_name || parsed.room;
+        if (!roomName) throw new Error('No room name');
+
+        const rejoinData = await apiFetch('/api/livekit/rejoin-room', {
+          method: 'POST',
+          body: JSON.stringify({
+            room: roomName,
+            conversation_id: parsed.conversationId || undefined,
+          }),
+        });
+
+      setConversationId(parsed.conversationId || null);
+      setRoomInfo({
+        room: rejoinData.room,
+        token: rejoinData.token,
+        mode: convData?.mode || parsed.mode || 'general',
+        category: convData?.category || parsed.category || '',
+      });
+      setReconnecting(false);
+
+      if (convData?.exchanges?.length > 0) {
+        setInitialExchanges(convData.exchanges);
+      } else {
+        setInitialExchanges([]);
+      }
+    } catch (err) {
+        console.warn('Reconnection failed, clearing stale session:', err.message);
+        localStorage.removeItem(STORAGE_KEY);
+        setReconnecting(false);
+        reconnectionDone.current = false;
+      }
+    }
+
+    tryReconnect();
+  }, []);
 
   async function handleStart({ mode, selection }) {
-    const data = await apiFetch('/api/livekit/create-room', {
-      method: 'POST',
-      body: JSON.stringify({ mode, category: selection }),
-    });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ room: data.room, mode: data.mode, category: data.category }));
-    setRoomInfo(data);
+    try {
+      const data = await apiFetch('/api/livekit/create-room', {
+        method: 'POST',
+        body: JSON.stringify({ mode, category: selection }),
+      });
+      setConversationId(data.conversation_id);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        room: data.room,
+        mode: data.mode,
+        category: data.category,
+        conversationId: data.conversation_id,
+      }));
+      setRoomInfo(data);
+    } catch (err) {
+      console.error('Failed to create session:', err);
+      alert('Could not connect to practice session. Please try again.');
+    }
   }
 
   function handleComplete() {
-    localStorage.removeItem(STORAGE_KEY);
     if (roomInfo?.room) {
-      apiFetch('/api/livekit/end-room', { method: 'POST', body: JSON.stringify({ room: roomInfo.room }) }).catch(() => {});
+      apiFetch('/api/livekit/end-conversation', {
+        method: 'POST',
+        body: JSON.stringify({
+          room: roomInfo.room,
+          conversation_id: conversationId || undefined,
+        }),
+      }).catch(() => {});
     }
+    localStorage.removeItem(STORAGE_KEY);
     setRoomInfo(null);
+    setConversationId(null);
+    setInitialExchanges(null);
+  }
+
+  if (reconnecting) {
+    return <ReconnectingOverlay />;
   }
 
   if (roomInfo) {
     return (
-      <SessionView
-        roomInfo={roomInfo}
-        onComplete={handleComplete}
-      />
+      <ErrorBoundary>
+        <SessionView
+          roomInfo={roomInfo}
+          onComplete={handleComplete}
+          conversationId={conversationId}
+          initialExchanges={initialExchanges}
+        />
+      </ErrorBoundary>
     );
   }
 
