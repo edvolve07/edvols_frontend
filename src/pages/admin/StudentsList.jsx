@@ -154,6 +154,7 @@ export default function StudentsList() {
                 <tr>
                   <th className="px-4 py-3">Student</th>
                   <th className="px-4 py-3">Institution</th>
+                  <th className="px-4 py-3">Branch</th>
                   <th className="px-4 py-3">Activity</th>
                   <th className="px-4 py-3">Interview</th>
                   <th className="px-4 py-3">Aptitude</th>
@@ -177,6 +178,7 @@ export default function StudentsList() {
                         <p className="text-xs text-slate-500">{s.email}</p>
                       </td>
                       <td className="px-4 py-3 text-xs font-medium">{s.institution_name || "—"}</td>
+                      <td className="px-4 py-3 text-xs font-medium">{s.department_name || "—"}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           <Clock size={12} className="text-slate-400" />
@@ -282,8 +284,8 @@ function StudentEditModal({ student, onClose, onSaved }) {
         organization: student.organization || "",
       });
       setResult(null);
-      if (student.institution_id) {
-        apiFetch(`/api/institutions/${student.institution_id}/departments`)
+      if (student.institutionId) {
+        apiFetch(`/api/institutions/${student.institutionId}/departments`)
           .then((data) => setDepartments(data.departments || []))
           .catch(() => {});
       }

@@ -39,26 +39,26 @@ function StatusBadge({ status }) {
   );
 }
 
-function AssignSubscriptionModal({ plans, students, onClose, onSuccess }) {
+function AssignJourneyAccessModal({ plans, students, onClose, onSuccess }) {
   const [selectedId, setSelectedId] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState("");
+  const [selectedLevel, setSelectedLevel] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!selectedId || !selectedPlan) return;
+    if (!selectedId || !selectedLevel) return;
     setSubmitting(true);
     setError("");
     try {
-      await apiFetch("/api/mentorship/admin/subscriptions", {
+      await apiFetch("/api/mentorship/admin/journey-access", {
         method: "POST",
-        body: JSON.stringify({ student_id: selectedId, plan_key: selectedPlan }),
+        body: JSON.stringify({ student_id: selectedId, access_level: parseInt(selectedLevel) }),
       });
       onSuccess();
       onClose();
     } catch (err) {
-      setError(err.message || "Failed to assign subscription");
+      setError(err.message || "Failed to assign journey access");
     } finally {
       setSubmitting(false);
     }
@@ -70,8 +70,8 @@ function AssignSubscriptionModal({ plans, students, onClose, onSuccess }) {
         <button type="button" onClick={onClose} className="absolute right-4 top-4 z-10 rounded-lg bg-white p-2 text-slate-500 hover:bg-slate-100">
           <X size={18} />
         </button>
-        <h2 className="text-xl font-bold text-slate-900">Assign Subscription</h2>
-        <p className="mt-1 text-sm text-slate-500">Select a student and a plan.</p>
+        <h2 className="text-xl font-bold text-slate-900">Assign Journey Access Level</h2>
+        <p className="mt-1 text-sm text-slate-500">Select a student and assign their placement journey access level.</p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div className="field">
@@ -92,21 +92,31 @@ function AssignSubscriptionModal({ plans, students, onClose, onSuccess }) {
           </div>
 
           <div className="field">
-            <label className="mb-1 block text-sm font-semibold text-slate-700">Plan</label>
+            <label className="mb-1 block text-sm font-semibold text-slate-700">Journey Access Level</label>
             <div className="relative">
               <select
-                value={selectedPlan}
-                onChange={(e) => setSelectedPlan(e.target.value)}
+                value={selectedLevel}
+                onChange={(e) => setSelectedLevel(e.target.value)}
                 className="w-full appearance-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
               >
-                <option value="">Select a plan...</option>
+                <option value="">Select a level...</option>
                 {plans.map((p) => (
-                  <option key={p.key} value={p.key}>{p.name} — {p.duration_months}mo, {p.interviews_total} interviews</option>
+                  <option key={p.key} value={p.level_access}>Level {p.level_access} — {p.name} ({p.interviews_total} interviews)</option>
                 ))}
               </select>
               <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
             </div>
           </div>
+
+          {selectedLevel && (
+            <div className="rounded-xl border border-brand-100 bg-brand-50 p-3">
+              <p className="text-xs font-semibold text-brand-700">Level {selectedLevel} Access</p>
+              <p className="mt-0.5 text-xs text-brand-600">
+                Student will have access to {plans.find(p => p.level_access === parseInt(selectedLevel))?.interviews_total || 0} interviews
+                across {selectedLevel} level{parseInt(selectedLevel) > 1 ? 's' : ''}.
+              </p>
+            </div>
+          )}
 
           {error && (
             <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">{error}</div>
@@ -118,11 +128,11 @@ function AssignSubscriptionModal({ plans, students, onClose, onSuccess }) {
             </button>
             <button
               type="submit"
-              disabled={!selectedId || !selectedPlan || submitting}
+              disabled={!selectedId || !selectedLevel || submitting}
               className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              Assign
+              Assign Access
             </button>
           </div>
         </form>
@@ -131,9 +141,9 @@ function AssignSubscriptionModal({ plans, students, onClose, onSuccess }) {
   );
 }
 
-function BulkAssignModal({ plans, students, onClose, onSuccess }) {
+function BulkJourneyAccessModal({ plans, students, onClose, onSuccess }) {
   const [selectedIds, setSelectedIds] = useState([]);
-  const [selectedPlan, setSelectedPlan] = useState("");
+  const [selectedLevel, setSelectedLevel] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [results, setResults] = useState(null);
@@ -148,18 +158,18 @@ function BulkAssignModal({ plans, students, onClose, onSuccess }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (selectedIds.length === 0 || !selectedPlan) return;
+    if (selectedIds.length === 0 || !selectedLevel) return;
     setSubmitting(true);
     setError("");
     try {
-      const res = await apiFetch("/api/mentorship/admin/subscriptions/bulk", {
+      const res = await apiFetch("/api/mentorship/admin/journey-access/bulk", {
         method: "POST",
-        body: JSON.stringify({ student_ids: selectedIds, plan_key: selectedPlan }),
+        body: JSON.stringify({ student_ids: selectedIds, access_level: parseInt(selectedLevel) }),
       });
-      setResults(res.errors || []);
+      setResults(res.results || []);
       onSuccess();
     } catch (err) {
-      setError(err.message || "Failed to bulk assign");
+      setError(err.message || "Failed to bulk assign access");
     } finally {
       setSubmitting(false);
     }
@@ -171,8 +181,8 @@ function BulkAssignModal({ plans, students, onClose, onSuccess }) {
         <button type="button" onClick={onClose} className="absolute right-4 top-4 z-10 rounded-lg bg-white p-2 text-slate-500 hover:bg-slate-100">
           <X size={18} />
         </button>
-        <h2 className="text-xl font-bold text-slate-900">Bulk Assign Subscriptions</h2>
-        <p className="mt-1 text-sm text-slate-500">Select multiple students and assign a plan in one go.</p>
+        <h2 className="text-xl font-bold text-slate-900">Bulk Assign Journey Access</h2>
+        <p className="mt-1 text-sm text-slate-500">Select multiple students and assign a journey access level.</p>
 
         {results ? (
           <div className="mt-6">
@@ -229,16 +239,16 @@ function BulkAssignModal({ plans, students, onClose, onSuccess }) {
             </div>
 
             <div className="field">
-              <label className="mb-1 block text-sm font-semibold text-slate-700">Plan</label>
+              <label className="mb-1 block text-sm font-semibold text-slate-700">Journey Access Level</label>
               <div className="relative">
                 <select
-                  value={selectedPlan}
-                  onChange={(e) => setSelectedPlan(e.target.value)}
+                  value={selectedLevel}
+                  onChange={(e) => setSelectedLevel(e.target.value)}
                   className="w-full appearance-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
                 >
-                  <option value="">Select a plan...</option>
+                  <option value="">Select a level...</option>
                   {plans.map((p) => (
-                    <option key={p.key} value={p.key}>{p.name} — {p.duration_months}mo, {p.interviews_total} interviews</option>
+                    <option key={p.key} value={p.level_access}>Level {p.level_access} — {p.name} ({p.interviews_total} interviews)</option>
                   ))}
                 </select>
                 <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -253,7 +263,7 @@ function BulkAssignModal({ plans, students, onClose, onSuccess }) {
               <button type="button" onClick={onClose} className="btn-secondary rounded-xl px-4 py-2.5 text-sm font-semibold">Cancel</button>
               <button
                 type="submit"
-                disabled={selectedIds.length === 0 || !selectedPlan || submitting}
+                disabled={selectedIds.length === 0 || !selectedLevel || submitting}
                 className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -298,7 +308,7 @@ function StudentAnalyticsModal({ studentId, onClose, isMasterAdmin, onSuccess })
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState("");
-  const [extendDays, setExtendDays] = useState(30);
+  const [selectedLevel, setSelectedLevel] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -311,37 +321,53 @@ function StudentAnalyticsModal({ studentId, onClose, isMasterAdmin, onSuccess })
     return () => { active = false; };
   }, [studentId]);
 
-  async function handleExtend() {
-    if (!data?.subscription?.id) return;
-    setActionLoading("extend");
+  async function handleUpgradeLevel() {
+    if (!selectedLevel || !data?.subscription) return;
+    setActionLoading("upgrade");
     setError("");
     try {
-      const res = await apiFetch(`/api/mentorship/admin/subscriptions/${data.subscription.id}/extend`, {
-        method: "PATCH",
-        body: JSON.stringify({ days: extendDays }),
-      });
-      setData((prev) => ({ ...prev, subscription: res.subscription }));
+      const currentLevel = data.subscription.level_access || 0;
+      const newLevel = parseInt(selectedLevel);
+      if (newLevel > currentLevel) {
+        await apiFetch("/api/mentorship/admin/journey-access/upgrade", {
+          method: "POST",
+          body: JSON.stringify({ student_id: studentId, new_level: newLevel }),
+        });
+      } else if (newLevel < currentLevel) {
+        await apiFetch("/api/mentorship/admin/journey-access/downgrade", {
+          method: "POST",
+          body: JSON.stringify({ student_id: studentId, new_level: newLevel }),
+        });
+      }
+      setData((prev) => ({
+        ...prev,
+        subscription: { ...prev.subscription, level_access: newLevel, plan_key: `level_1_${newLevel}` },
+      }));
+      setSelectedLevel("");
       onSuccess();
     } catch (err) {
-      setError(err.message || "Failed to extend");
+      setError(err.message || "Failed to update access level");
     } finally {
       setActionLoading("");
     }
   }
 
-  async function handleCancel() {
-    if (!data?.subscription?.id) return;
-    if (!window.confirm("Cancel this subscription? This cannot be undone.")) return;
-    setActionLoading("cancel");
+  async function handleDowngradeToZero() {
+    if (!window.confirm("Revoke all journey access for this student?")) return;
+    setActionLoading("downgrade");
     setError("");
     try {
-      const res = await apiFetch(`/api/mentorship/admin/subscriptions/${data.subscription.id}/cancel`, {
-        method: "PATCH",
+      await apiFetch("/api/mentorship/admin/journey-access/downgrade", {
+        method: "POST",
+        body: JSON.stringify({ student_id: studentId, new_level: 0 }),
       });
-      setData((prev) => ({ ...prev, subscription: res.subscription }));
+      setData((prev) => ({
+        ...prev,
+        subscription: { ...prev.subscription, level_access: 0, status: "none", plan_key: null },
+      }));
       onSuccess();
     } catch (err) {
-      setError(err.message || "Failed to cancel");
+      setError(err.message || "Failed to revoke access");
     } finally {
       setActionLoading("");
     }
@@ -481,29 +507,29 @@ function StudentAnalyticsModal({ studentId, onClose, isMasterAdmin, onSuccess })
                 </div>
               </SectionCard>
 
-              {/* Subscription */}
-              <SectionCard title="Subscription" icon={Crown}>
+              {/* Journey Access Level */}
+              <SectionCard title="Journey Access Level" icon={Crown}>
                 {sub ? (
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm">
-                      <span className="text-slate-500">Plan</span>
-                      <span className="font-medium text-slate-900">{sub.plan_key}</span>
+                      <span className="text-slate-500">Current Level</span>
+                      <span className="font-medium text-slate-900">Level {sub.level_access || 0} — {sub.plan_name || "None"}</span>
                     </div>
                     <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm">
                       <span className="text-slate-500">Status</span>
                       <StatusBadge status={sub.status} />
                     </div>
                     <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm">
-                      <span className="text-slate-500">Expiry</span>
-                      <span className="text-slate-700">{sub.expires_at ? new Date(sub.expires_at).toLocaleDateString() : "N/A"}</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm">
                       <span className="text-slate-500">Interviews</span>
                       <span className="text-slate-700">{usedInterviews} / {totalInterviews}</span>
                     </div>
+                    <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm">
+                      <span className="text-slate-500">Remaining</span>
+                      <span className="font-semibold text-slate-900">{remainingInterviews}</span>
+                    </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-400">No active subscription</p>
+                  <p className="text-sm text-slate-400">No journey access assigned</p>
                 )}
               </SectionCard>
 
@@ -598,41 +624,45 @@ function StudentAnalyticsModal({ studentId, onClose, isMasterAdmin, onSuccess })
               </SectionCard>
             )}
 
-            {/* Manage Subscription (master_admin only) */}
-            {sub && sub.status === "active" && isMasterAdmin && (
-              <SectionCard title="Manage Subscription" icon={Calendar}>
+            {/* Manage Journey Access (master_admin only) */}
+            {isMasterAdmin && sub && (
+              <SectionCard title="Manage Journey Access" icon={Calendar}>
                 <div className="flex flex-wrap items-end gap-3">
                   <div className="field">
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-600">Extend by days</label>
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-600">Change Access Level</label>
                     <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        value={extendDays}
-                        onChange={(e) => setExtendDays(Number(e.target.value))}
-                        min={1}
-                        max={365}
-                        className="w-24 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-                      />
+                      <select
+                        value={selectedLevel}
+                        onChange={(e) => setSelectedLevel(e.target.value)}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+                      >
+                        <option value="">Select level...</option>
+                        {[1,2,3,4,5,6].map(l => (
+                          <option key={l} value={l}>Level {l}</option>
+                        ))}
+                      </select>
                       <button
                         type="button"
-                        onClick={handleExtend}
-                        disabled={actionLoading === "extend"}
+                        onClick={handleUpgradeLevel}
+                        disabled={!selectedLevel || actionLoading === "upgrade" || parseInt(selectedLevel) === (sub?.level_access || 0)}
                         className="btn-primary inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
                       >
-                        {actionLoading === "extend" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar size={14} />}
-                        Extend
+                        {actionLoading === "upgrade" ? <Loader2 className="h-4 w-4 animate-spin" /> : <TrendingUp size={14} />}
+                        {parseInt(selectedLevel) > (sub?.level_access || 0) ? "Upgrade" : parseInt(selectedLevel) < (sub?.level_access || 0) ? "Downgrade" : "Set Level"}
                       </button>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleCancel}
-                    disabled={actionLoading === "cancel"}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-                  >
-                    {actionLoading === "cancel" ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle size={14} />}
-                    Cancel Subscription
-                  </button>
+                  {sub?.level_access > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleDowngradeToZero}
+                      disabled={actionLoading === "downgrade"}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {actionLoading === "downgrade" ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle size={14} />}
+                      Revoke Access
+                    </button>
+                  )}
                 </div>
               </SectionCard>
             )}
@@ -841,14 +871,14 @@ export default function MentorshipAdminDashboard() {
                   onClick={() => setShowBulk(true)}
                   className="btn-secondary inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
-                  <Users size={16} /> Bulk Assign
+                  <Users size={16} /> Bulk Assign Access
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAssign(true)}
                   className="btn-primary inline-flex items-center gap-2 rounded-xl bg-accent-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-accent-700"
                 >
-                  <UserPlus size={16} /> Assign Subscription
+                  <UserPlus size={16} /> Assign Journey Access
                 </button>
               </>
             )}
@@ -861,9 +891,9 @@ export default function MentorshipAdminDashboard() {
       )}
 
       <section className="mb-4 grid gap-3 sm:mb-6 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-        <StatCard label="Total Subscriptions" value={dashboard.total_subscriptions} icon={Crown} />
-        <StatCard label="Active Subscriptions" value={dashboard.active_subscriptions} icon={Users} tone="green" />
-        <StatCard label="Students with Journeys" value={dashboard.total_students} icon={TrendingUp} tone="amber" />
+        <StatCard label="Total Journey Access" value={dashboard.total_subscriptions} icon={Crown} />
+        <StatCard label="Active Journeys" value={dashboard.active_subscriptions} icon={Users} tone="green" />
+        <StatCard label="Total Students" value={dashboard.total_students} icon={TrendingUp} tone="amber" />
         <StatCard label="Avg Readiness Score" value={`${dashboard.average_readiness ?? 0}`} icon={Award} tone="slate" />
       </section>
 
@@ -908,7 +938,7 @@ export default function MentorshipAdminDashboard() {
               <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <th className="px-4 py-3">Name</th>
                 <th className="hidden px-4 py-3 sm:table-cell">Email</th>
-                <th className="hidden px-4 py-3 md:table-cell">Plan</th>
+                <th className="hidden px-4 py-3 md:table-cell">Access Level</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="hidden px-4 py-3 lg:table-cell">Interviews</th>
                 <th className="hidden px-4 py-3 lg:table-cell">Level</th>
@@ -940,7 +970,7 @@ export default function MentorshipAdminDashboard() {
                       </td>
                       <td className="hidden px-4 py-3 text-slate-500 sm:table-cell">{s.email}</td>
                       <td className="hidden px-4 py-3 md:table-cell">
-                        <span className="text-slate-700">{s.subscription?.plan_name || "—"}</span>
+                        <span className="text-slate-700">{s.subscription?.level_access ? `Level ${s.subscription.level_access}` : "—"}</span>
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge status={s.subscription?.status} />
@@ -1006,7 +1036,7 @@ export default function MentorshipAdminDashboard() {
       </section>
 
       {showAssign && (
-        <AssignSubscriptionModal
+        <AssignJourneyAccessModal
           plans={plans}
           students={students}
           onClose={() => setShowAssign(false)}
@@ -1015,7 +1045,7 @@ export default function MentorshipAdminDashboard() {
       )}
 
       {showBulk && (
-        <BulkAssignModal
+        <BulkJourneyAccessModal
           plans={plans}
           students={students}
           onClose={() => setShowBulk(false)}

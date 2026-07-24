@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Loader2, Target, TrendingUp, Play, FileText, Award, Clock, ArrowRight, Upload, BarChart3, CheckCircle2 } from "lucide-react";
+import { Loader2, Target, TrendingUp, Play, FileText, Award, Clock, ArrowRight, Upload, BarChart3, CheckCircle2, Lock } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 
@@ -18,6 +18,7 @@ export default function MentorshipPage() {
   const [interviews, setInterviews] = useState([]);
   const [comparisons, setComparisons] = useState([]);
   const [lockStatus, setLockStatus] = useState(null);
+  const [accessLevel, setAccessLevel] = useState(6);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -52,6 +53,9 @@ export default function MentorshipPage() {
       setReadiness(readinessRes.readiness);
       setLevels(levelsRes.levels || []);
       setCurrentLevel(levelsRes.current_level || 1);
+      if (levelsRes.journey_access_level !== undefined && levelsRes.journey_access_level !== null) {
+        setAccessLevel(levelsRes.journey_access_level);
+      }
       setInterviews(interviewsRes.interviews || []);
       setComparisons(comparisonsRes.comparisons || []);
       setLockStatus(lockRes);
@@ -350,11 +354,16 @@ export default function MentorshipPage() {
 
         {levels.length > 0 && (
           <section className="mb-8 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-            <h2 className="mb-4 text-lg font-bold text-slate-900">Level Progression</h2>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Level Progression</h2>
+              <span className="text-xs text-slate-500">Access up to Level {accessLevel}</span>
+            </div>
             <div className="flex flex-col gap-3">
               {levels.map((lvl) => {
-                const isActive = lvl.level === currentLevel;
-                const isCompleted = lvl.level < currentLevel;
+                const isAccessible = lvl.accessible;
+                const isActive = isAccessible && lvl.level === currentLevel;
+                const isCompleted = isAccessible && lvl.level < currentLevel;
+                const isLocked = !isAccessible;
                 return (
                   <div
                     key={lvl.level}
@@ -363,20 +372,27 @@ export default function MentorshipPage() {
                         ? "border-brand-300 bg-brand-50"
                         : isCompleted
                         ? "border-emerald-200 bg-emerald-50"
+                        : isLocked
+                        ? "border-slate-100 bg-slate-50 opacity-50"
                         : "border-slate-100 bg-slate-50 opacity-60"
                     }`}
                   >
-                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${levelColors[lvl.level - 1] || "bg-slate-400"}`}>
-                      {lvl.level}
+                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
+                      isLocked ? "bg-slate-300" : (levelColors[lvl.level - 1] || "bg-slate-400")
+                    }`}>
+                      {isLocked ? <Lock className="h-4 w-4" /> : lvl.level}
                     </div>
                     <div className="flex-1">
-                      <p className={`text-sm font-semibold ${isActive ? "text-brand-900" : "text-slate-800"}`}>
+                      <p className={`text-sm font-semibold ${isActive ? "text-brand-900" : isLocked ? "text-slate-400" : "text-slate-800"}`}>
                         {lvl.name || `Level ${lvl.level}`}
                       </p>
-                      <p className="text-xs text-slate-500">Min score: {lvl.min_score || 0}</p>
+                      <p className={`text-xs ${isLocked ? "text-slate-300" : "text-slate-500"}`}>
+                        {isLocked ? "Locked — complete previous levels to unlock" : `Unlocks after ${lvl.unlock_after_interviews || 0} interviews`}
+                      </p>
                     </div>
                     {isCompleted && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
                     {isActive && <span className="rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-semibold text-brand-700">Current</span>}
+                    {isLocked && <Lock className="h-4 w-4 text-slate-300" />}
                   </div>
                 );
               })}

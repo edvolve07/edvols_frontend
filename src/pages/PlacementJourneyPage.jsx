@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Play,
   AlertCircle,
+  Lock,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
@@ -58,6 +59,7 @@ function PlacementJourneyInner() {
   const [journey, setJourney] = useState(null);
   const [levels, setLevels] = useState([]);
   const [currentLevel, setCurrentLevel] = useState(1);
+  const [accessLevel, setAccessLevel] = useState(6);
   const [interviews, setInterviews] = useState([]);
   const [trends, setTrends] = useState([]);
   const [readiness, setReadiness] = useState(null);
@@ -83,6 +85,10 @@ function PlacementJourneyInner() {
       setJourney(get(0, {}).journey || null);
       setLevels(get(1, {}).levels || []);
       setCurrentLevel(get(1, {}).current_level || 1);
+      const backendAccessLevel = get(1, {}).journey_access_level;
+      if (backendAccessLevel !== undefined && backendAccessLevel !== null) {
+        setAccessLevel(backendAccessLevel);
+      }
       const rawInterviews = get(2, {}).interviews || [];
       setInterviews(rawInterviews.map((iv) => ({
         ...iv,
@@ -243,29 +249,39 @@ function PlacementJourneyInner() {
         {/* Level progression */}
         {levels.length > 0 && (
           <section className="mb-8 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-            <h2 className="mb-4 text-lg font-bold text-slate-900">Level Progression</h2>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Level Progression</h2>
+              <span className="text-xs text-slate-500">Access up to Level {accessLevel}</span>
+            </div>
             <div className="flex flex-col gap-3">
               {levels.map((lvl) => {
-                const isActiveLvl = lvl.level === currentLevel;
-                const isCompleted = lvl.level < currentLevel;
+                const isAccessible = lvl.accessible;
+                const isActiveLvl = isAccessible && lvl.level === currentLevel;
+                const isCompleted = isAccessible && lvl.level < currentLevel;
+                const isLocked = !isAccessible;
                 return (
                   <div
                     key={lvl.level}
                     className={`flex items-center gap-4 rounded-lg border p-3 sm:p-4 transition ${
                       isActiveLvl ? "border-brand-300 bg-brand-50"
                         : isCompleted ? "border-emerald-200 bg-emerald-50"
+                        : isLocked ? "border-slate-100 bg-slate-50 opacity-50"
                         : "border-slate-100 bg-slate-50 opacity-60"
                     }`}
                   >
-                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${levelColors[lvl.level - 1] || "bg-slate-400"}`}>
-                      {lvl.level}
+                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
+                      isLocked ? "bg-slate-300" : (levelColors[lvl.level - 1] || "bg-slate-400")
+                    }`}>
+                      {isLocked ? <Lock className="h-4 w-4" /> : lvl.level}
                     </div>
                     <div className="flex-1">
-                      <p className={`text-sm font-semibold ${isActiveLvl ? "text-brand-900" : "text-slate-800"}`}>
+                      <p className={`text-sm font-semibold ${isActiveLvl ? "text-brand-900" : isLocked ? "text-slate-400" : "text-slate-800"}`}>
                         {lvl.name || `Level ${lvl.level}`}
                       </p>
-                      <p className="text-xs text-slate-500">Unlocks after {lvl.unlock_after_interviews || 0} interviews</p>
-                      {(lvl.features || lvl.unlocked_features)?.length > 0 && (
+                      <p className={`text-xs ${isLocked ? "text-slate-300" : "text-slate-500"}`}>
+                        {isLocked ? "Locked — complete previous levels to unlock" : `Unlocks after ${lvl.unlock_after_interviews || 0} interviews`}
+                      </p>
+                      {!isLocked && (lvl.features || lvl.unlocked_features)?.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1.5">
                           {(lvl.features || lvl.unlocked_features).map((feat) => (
                             <span key={feat} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
@@ -277,6 +293,7 @@ function PlacementJourneyInner() {
                     </div>
                     {isCompleted && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
                     {isActiveLvl && <span className="rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-semibold text-brand-700">Current</span>}
+                    {isLocked && <Lock className="h-4 w-4 text-slate-300" />}
                   </div>
                 );
               })}

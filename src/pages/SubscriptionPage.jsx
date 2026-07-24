@@ -141,6 +141,7 @@ export default function SubscriptionPage() {
   }
 
   const isActive = subscription && subscription.status === "active";
+  const isEnterprise = !!subscription?.level_access || subscription?.plan_key?.startsWith("level_1_");
   const interviewsUsed = subscription?.interviews_used || 0;
   const interviewsTotal = subscription?.interviews_total || 1;
   const usagePercent = Math.min(100, Math.round((interviewsUsed / interviewsTotal) * 100));
@@ -154,7 +155,9 @@ export default function SubscriptionPage() {
             Subscription & Mentorship
           </h1>
           <p className="mt-1.5 text-base text-slate-500">
-            Manage your mentorship plan and track your interview journey.
+            {isEnterprise
+              ? "Manage your enterprise placement journey and track your interview progress."
+              : "Manage your mentorship plan and track your interview journey."}
           </p>
         </div>
       </section>
@@ -248,6 +251,7 @@ export default function SubscriptionPage() {
         </section>
       ) : null}
 
+      {!isEnterprise && (
       <section className="mb-8">
         <div className="mb-5">
           <p className="eyebrow">Choose a Plan</p>
@@ -333,6 +337,7 @@ export default function SubscriptionPage() {
           })}
         </div>
       </section>
+      )}
 
       {isActive && journey ? (
         <section className="rounded-lg border border-slate-200 bg-white p-6">

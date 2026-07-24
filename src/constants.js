@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   Code2,
+  CreditCard,
   Crown,
   Cpu,
   FileText,
@@ -16,11 +17,13 @@ import {
   LayoutDashboard,
   MessageSquareText,
   Mic2,
+  Receipt,
   ShieldCheck,
   Sparkles,
   TrendingUp,
   UserRound,
   UserCog,
+  Users,
 } from "lucide-react";
 
 
@@ -30,19 +33,20 @@ export const APP_NAME = "Edvols";
 
 
 export const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["student"], modules: ["both", "aptitude", "ai_interview"] },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["student", "individual_student"], modules: ["both", "aptitude", "ai_interview"] },
 
-  { href: "/interview", label: "Interview Prep", icon: Mic2, roles: ["student"], modules: ["both", "ai_interview"] },
-  { href: "/aptitude", label: "Aptitude Practice", icon: BrainCircuit, roles: ["student"], modules: ["both", "aptitude"] },
+  { href: "/interview", label: "Interview Prep", icon: Mic2, roles: ["student", "individual_student"], modules: ["both", "ai_interview"] },
+  { href: "/aptitude", label: "Aptitude Practice", icon: BrainCircuit, roles: ["student", "individual_student"], modules: ["both", "aptitude"] },
   
-  { href: "/programming/practice", label: "Coding Practice", icon: Code2, roles: ["student"], modules: ["both", "programming"] },
+  { href: "/programming/practice", label: "Coding Practice", icon: Code2, roles: ["student", "individual_student"], modules: ["both", "programming"] },
   // { href: "/programming", label: "AI Mock Interview", icon: Cpu, roles: ["student"], modules: ["both", "programming"] },
-  { href: "/programming/assessments", label: "Contests", icon: ClipboardCheck, roles: ["student"], modules: ["both", "programming"] },
-  { href: "/communication", label: "Interview Communication", icon: MessageSquareText, roles: ["student"], modules: ["both", "communication"] },
-  { href: "/progress", label: "Progress", icon: TrendingUp, roles: ["student"], modules: ["both", "ai_interview"] },
-  { href: "/journey", label: "Placement Journey", icon: Briefcase, roles: ["student"], modules: ["both", "ai_interview"] },
-  { href: "/reports", label: "Reports", icon: FileText, roles: ["student"], modules: ["both", "aptitude", "ai_interview"] },
-  { href: "/resume-builder", label: "Resume Builder", icon: FilePlus2, roles: ["student"] },
+  { href: "/programming/assessments", label: "Contests", icon: ClipboardCheck, roles: ["student", "individual_student"], modules: ["both", "programming"] },
+  { href: "/communication", label: "Interview Communication", icon: MessageSquareText, roles: ["student", "individual_student"], modules: ["both", "communication"] },
+  { href: "/progress", label: "Progress", icon: TrendingUp, roles: ["student", "individual_student"], modules: ["both", "ai_interview"] },
+  { href: "/journey", label: "Placement Journey", icon: Briefcase, roles: ["student", "individual_student"], modules: ["both", "ai_interview"] },
+  { href: "/reports", label: "Reports", icon: FileText, roles: ["student", "individual_student"], modules: ["both", "aptitude", "ai_interview"] },
+  { href: "/resume-builder", label: "Resume Builder", icon: FilePlus2, roles: ["student", "individual_student"] },
+  { href: "/subscription", label: "Subscription & Billing", icon: CreditCard, roles: ["individual_student"] },
   { href: "/admin/dashboard", label: "Admin Dashboard", icon: ShieldCheck, roles: ["admin"] },
   { href: "/admin/analytics/aptitude", label: "Aptitude Analytics", icon: BrainCircuit, roles: ["admin"], modules: ["both", "aptitude"] },
   { href: "/admin/analytics/interviews", label: "Interview Analytics", icon: Mic2, roles: ["admin"], modules: ["both", "ai_interview"] },
@@ -50,17 +54,18 @@ export const NAV_ITEMS = [
   { href: "/admin/mentorship", label: "Mentorship", icon: GraduationCap, roles: ["admin"], modules: ["both", "ai_interview"] },
   { href: "/master-admin/dashboard", label: "Master Admin", icon: Crown, roles: ["master_admin"] },
   { href: "/master-admin/institutions", label: "Institutions", icon: Building2, roles: ["master_admin"] },
+  { href: "/master-admin/individual-students", label: "Individual Students", icon: Users, roles: ["master_admin"] },
   { href: "/master-admin/master-admins", label: "Master Admins", icon: Crown, roles: ["master_admin"] },
   { href: "/master-admin/programming", label: "Practice Problems", icon: Code2, roles: ["master_admin"] },
   { href: "/master-admin/programming/assessments", label: "Coding Assessments", icon: ClipboardCheck, roles: ["master_admin"] },
   { href: "/master-admin/ai-usage", label: "AI Usage", icon: Cpu, roles: ["master_admin"] },
-  { href: "/admin/assessments/create", label: "New Aptitude Test", icon: FilePlus2, roles: ["admin"], modules: ["both", "aptitude"] },
-  { href: "/admin/assessments", label: "Aptitude Assessments", icon: ClipboardList, roles: ["admin"], modules: ["both", "aptitude"] },
+  { href: "/admin/assessments/create", label: "New Aptitude Test", icon: FilePlus2, roles: ["admin", "master_admin"], modules: ["both", "aptitude"] },
+  { href: "/admin/assessments", label: "Aptitude Assessments", icon: ClipboardList, roles: ["admin", "master_admin"], modules: ["both", "aptitude"] },
   { href: "/admin/programming/analytics/students", label: "Programming Analytics", icon: TrendingUp, roles: ["admin"], modules: ["both", "programming"] },
   { href: "/admin/programming/assessments", label: "Coding Assessments", icon: ClipboardCheck, roles: ["admin"], modules: ["both", "programming"] },
   { href: "/admin/programming/assessments/create", label: "New Coding Test", icon: FilePlus2, roles: ["admin"], modules: ["both", "programming"] },
   { href: "/admin/help-requests", label: "Help Requests", icon: HelpCircle, roles: ["master_admin"] },
-  { href: "/profile", label: "Profile", icon: UserRound, roles: ["student", "admin", "master_admin"] },
+  { href: "/profile", label: "Profile", icon: UserRound, roles: ["student", "admin", "master_admin", "individual_student"] },
 ];
 
 

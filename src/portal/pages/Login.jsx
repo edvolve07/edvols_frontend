@@ -141,8 +141,8 @@ export default function Login() {
 
           <p className="mt-8 text-center text-sm text-slate-500">
             New here?{' '}
-            <Link className="font-semibold text-brand-700 transition hover:text-brand-800" to="/signup">
-              Create account <ArrowRight className="ml-0.5 inline h-3.5 w-3.5" />
+            <Link className="font-semibold text-brand-700 transition hover:text-brand-800" to="/individual-signup">
+              Sign Up <ArrowRight className="ml-0.5 inline h-3.5 w-3.5" />
             </Link>
           </p>
         </form>

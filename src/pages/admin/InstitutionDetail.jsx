@@ -616,15 +616,18 @@ function StudentEditModal({ open, onClose, student, departments, onSaved }) {
   );
 }
 
-const PLANS = [
-  { key: "1_month", name: "1 Month", interviews: 4, price: 499 },
-  { key: "3_month", name: "3 Months", interviews: 12, price: 1199 },
-  { key: "6_month", name: "6 Months", interviews: 24, price: 1999 },
+const JOURNEY_LEVELS = [
+  { level: 1, name: "Level 1 — Foundation", interviews: 4, description: "Resume, Portfolio, Communication, Profile" },
+  { level: 2, name: "Level 2 — Professional", interviews: 8, description: "Technical Interview, HR, Behavioral, Mock" },
+  { level: 3, name: "Level 3 — Advanced", interviews: 12, description: "System Design, Leadership, Case Study" },
+  { level: 4, name: "Level 4 — Expert", interviews: 18, description: "Industry-Specific, Executive Presence" },
+  { level: 5, name: "Level 5 — Mentor", interviews: 22, description: "Mentoring, Peer Review, Teaching" },
+  { level: 6, name: "Level 6 — Placement Master", interviews: 24, description: "Final Assessment, Job Readiness" },
 ];
 
-function SubscriptionAssignModal({ open, onClose, institutionId, departments, students, onAssigned }) {
+function JourneyAccessAssignModal({ open, onClose, institutionId, departments, students, onAssigned }) {
   const [scope, setScope] = useState("institution");
-  const [planKey, setPlanKey] = useState("3_month");
+  const [selectedLevels, setSelectedLevels] = useState([]);
   const [selectedDept, setSelectedDept] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedStudents, setSelectedStudents] = useState([]);
@@ -636,7 +639,7 @@ function SubscriptionAssignModal({ open, onClose, institutionId, departments, st
   useEffect(() => {
     if (!open) {
       setScope("institution");
-      setPlanKey("3_month");
+      setSelectedLevels([]);
       setSelectedDept("");
       setSelectedYear("");
       setSelectedStudents([]);
@@ -652,7 +655,7 @@ function SubscriptionAssignModal({ open, onClose, institutionId, departments, st
     if (selectedDept) params.set("department_id", selectedDept);
     if (selectedYear) params.set("year", selectedYear);
     let cancelled = false;
-    apiFetch(`/api/mentorship/admin/subscription-impact?${params.toString()}`)
+    apiFetch(`/api/mentorship/admin/journey-access/impact?${params.toString()}`)
       .then((data) => { if (!cancelled) setImpact(data); })
       .catch(() => { if (!cancelled) setImpact(null); });
     return () => { cancelled = true; };
@@ -664,6 +667,12 @@ function SubscriptionAssignModal({ open, onClose, institutionId, departments, st
     return s.name?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q);
   });
 
+  function toggleLevel(level) {
+    setSelectedLevels((prev) =>
+      prev.includes(level) ? prev.filter((x) => x !== level) : [...prev, level]
+    );
+  }
+
   function toggleStudent(id) {
     setSelectedStudents((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
@@ -674,29 +683,36 @@ function SubscriptionAssignModal({ open, onClose, institutionId, departments, st
     setSaving(true);
     setResult(null);
     try {
+      if (selectedLevels.length === 0) {
+        setResult({ type: "error", message: "Select at least one level." });
+        setSaving(false);
+        return;
+      }
+      const maxLevel = Math.max(...selectedLevels);
       if (scope === "individual") {
         if (selectedStudents.length === 0) {
           setResult({ type: "error", message: "Select at least one student." });
           setSaving(false);
           return;
         }
-        await apiFetch("/api/mentorship/admin/subscriptions/bulk", {
+        await apiFetch("/api/mentorship/admin/journey-access/bulk", {
           method: "POST",
-          body: JSON.stringify({ student_ids: selectedStudents, plan_key: planKey }),
+          body: JSON.stringify({ student_ids: selectedStudents, access_level: maxLevel }),
         });
       } else {
-        const body = { institution_id: institutionId, plan_key: planKey };
+        const body = { access_level: maxLevel };
         if (selectedDept) body.department_id = selectedDept;
         if (selectedYear) body.year = selectedYear;
-        await apiFetch(`/api/mentorship/admin/subscriptions/institution/${institutionId}`, {
+        await apiFetch(`/api/mentorship/admin/journey-access/institution/${institutionId}`, {
           method: "POST",
           body: JSON.stringify(body),
         });
       }
-      setResult({ type: "success", message: "Subscription assigned successfully!" });
+      const levelNames = selectedLevels.sort((a, b) => a - b).map((l) => `Level ${l}`).join(", ");
+      setResult({ type: "success", message: `Journey access assigned: ${levelNames}!` });
       onAssigned();
     } catch (err) {
-      setResult({ type: "error", message: err.message || "Failed to assign subscription." });
+      setResult({ type: "error", message: err.message || "Failed to assign journey access." });
     } finally {
       setSaving(false);
     }
@@ -710,7 +726,7 @@ function SubscriptionAssignModal({ open, onClose, institutionId, departments, st
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Crown size={18} className="text-brand-600" />
-            <h2 className="text-lg font-semibold text-slate-950">Assign Subscription</h2>
+            <h2 className="text-lg font-semibold text-slate-950">Assign Journey Access</h2>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
             <X size={18} />
@@ -744,29 +760,83 @@ function SubscriptionAssignModal({ open, onClose, institutionId, departments, st
         </div>
 
         <div className="mb-4">
-          <label className="mb-1 block text-xs font-semibold text-slate-600">Plan</label>
-          <select className="field" value={planKey} onChange={(e) => setPlanKey(e.target.value)}>
-            {PLANS.map((p) => (
-              <option key={p.key} value={p.key}>{p.name} — {p.interviews} interviews (₹{p.price})</option>
+          <label className="mb-1 block text-xs font-semibold text-slate-600">Select Levels to Assign</label>
+          <div className="space-y-2">
+            {JOURNEY_LEVELS.map((l) => (
+              <label key={l.level} className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition ${
+                selectedLevels.includes(l.level)
+                  ? "border-brand-300 bg-brand-50"
+                  : "border-slate-200 bg-white hover:border-slate-300"
+              }`}>
+                <input type="checkbox" checked={selectedLevels.includes(l.level)}
+                  onChange={() => toggleLevel(l.level)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-slate-900">{l.name}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{l.description}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{l.interviews} interviews</p>
+                </div>
+              </label>
             ))}
-          </select>
+          </div>
+          {selectedLevels.length > 0 && (
+            <p className="mt-2 text-xs text-brand-600 font-medium">
+              {selectedLevels.length} level(s) selected: {selectedLevels.sort((a, b) => a - b).map((l) => `L${l}`).join(", ")}
+            </p>
+          )}
         </div>
 
+        {scope === "institution" && (
+          <div className="mb-4 flex gap-3">
+            <div className="flex-1">
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Department (optional)</label>
+              <select className="field" value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)}>
+                <option value="">All departments</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Year (optional)</label>
+              <select className="field" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+                <option value="">All years</option>
+                <option value="1st">1st Year</option>
+                <option value="2nd">2nd Year</option>
+                <option value="3rd">3rd Year</option>
+                <option value="4th">4th Year</option>
+              </select>
+            </div>
+          </div>
+        )}
+
         {scope === "department" && (
-          <div className="mb-4">
-            <label className="mb-1 block text-xs font-semibold text-slate-600">Department (optional)</label>
-            <select className="field" value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)}>
-              <option value="">All departments</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
+          <div className="mb-4 flex gap-3">
+            <div className="flex-1">
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Department</label>
+              <select className="field" value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)}>
+                <option value="">All departments</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Year (optional)</label>
+              <select className="field" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+                <option value="">All years</option>
+                <option value="1st">1st Year</option>
+                <option value="2nd">2nd Year</option>
+                <option value="3rd">3rd Year</option>
+                <option value="4th">4th Year</option>
+              </select>
+            </div>
           </div>
         )}
 
         {scope === "year" && (
           <div className="mb-4">
-            <label className="mb-1 block text-xs font-semibold text-slate-600">Year (optional)</label>
+            <label className="mb-1 block text-xs font-semibold text-slate-600">Year</label>
             <select className="field" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
               <option value="">All years</option>
               <option value="1st">1st Year</option>
@@ -808,7 +878,7 @@ function SubscriptionAssignModal({ open, onClose, institutionId, departments, st
           <div className="mb-4 rounded-lg bg-brand-50 border border-brand-100 p-3 text-sm">
             <p className="font-semibold text-brand-800">Impact Preview</p>
             <p className="text-xs text-brand-600 mt-1">
-              {impact.total_affected ?? impact.total ?? 0} student(s) will receive the <strong>{PLANS.find((p) => p.key === planKey)?.name}</strong> plan.
+              {impact.total_affected ?? 0} student(s) will receive journey access up to <strong>Level {selectedLevels.length > 0 ? Math.max(...selectedLevels) : "—"}</strong>.
             </p>
           </div>
         )}
@@ -819,7 +889,7 @@ function SubscriptionAssignModal({ open, onClose, institutionId, departments, st
           <button onClick={handleAssign} disabled={saving}
             className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-70">
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Crown size={15} />}
-            {saving ? "Assigning..." : "Assign Subscription"}
+            {saving ? "Assigning..." : "Assign Journey Access"}
           </button>
         </div>
       </div>
@@ -843,7 +913,7 @@ export default function InstitutionDetail() {
   const [showCreateAdmin, setShowCreateAdmin] = useState(false);
   const [showCreateStudent, setShowCreateStudent] = useState(false);
   const [showAddDepartment, setShowAddDepartment] = useState(false);
-  const [showAssignSubscription, setShowAssignSubscription] = useState(false);
+  const [showAssignJourney, setShowAssignJourney] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deletingDept, setDeletingDept] = useState(null);
@@ -1105,9 +1175,9 @@ export default function InstitutionDetail() {
             </div>
             <div className="flex items-center gap-2">
               {isMasterAdmin && (
-                <button onClick={() => setShowAssignSubscription(true)}
+                <button onClick={() => setShowAssignJourney(true)}
                   className="inline-flex items-center gap-1 rounded-xl bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700">
-                  <Crown size={13} /> Assign Subscription
+                  <Crown size={13} /> Assign Journey Access
                 </button>
               )}
               <Link to={`/master-admin/students?institution_id=${id}`}
@@ -1175,7 +1245,7 @@ export default function InstitutionDetail() {
       <DepartmentModal open={showAddDepartment} onClose={() => setShowAddDepartment(false)}
         institutionId={id} onCreated={loadDepartments} />
 
-      <SubscriptionAssignModal open={showAssignSubscription} onClose={() => setShowAssignSubscription(false)}
+      <JourneyAccessAssignModal open={showAssignJourney} onClose={() => setShowAssignJourney(false)}
         institutionId={id} departments={departments} students={students} onAssigned={() => { loadStudents(); refreshAdmins(); }} />
 
       <StudentEditModal open={!!editingStudent} onClose={() => setEditingStudent(null)}

@@ -11,9 +11,10 @@ function generateTempPassword(name) {
 }
 
 export default function CreateAdmin() {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", organization: "", modules_access: "both", institutionId: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", organization: "", modules_access: "both", institutionId: "", department_id: "", admin_role: "" });
   const [importForm, setImportForm] = useState({ file: null, modules_access: "both", institutionId: "" });
   const [institutions, setInstitutions] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
@@ -28,6 +29,13 @@ export default function CreateAdmin() {
       .then((data) => setInstitutions(data.institutions || []))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!form.institutionId) { setDepartments([]); return; }
+    apiFetch(`/api/institutions/${form.institutionId}/departments`)
+      .then((data) => setDepartments(data.departments || []))
+      .catch(() => setDepartments([]));
+  }, [form.institutionId]);
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -45,7 +53,7 @@ export default function CreateAdmin() {
       });
       setResult(res);
       setEmailHelp(res.email_sent ? "Credentials sent to admin's email." : "Email service not configured. Share the temp password manually.");
-      setForm({ name: "", email: "", phone: "", organization: "", modules_access: "both", institutionId: "" });
+      setForm({ name: "", email: "", phone: "", organization: "", modules_access: "both", institutionId: "", department_id: "", admin_role: "" });
     } catch (err) {
       setError(err.message || "Unable to create admin.");
     } finally {
@@ -122,6 +130,27 @@ export default function CreateAdmin() {
                 ))}
               </select>
             </div>
+            {form.institutionId ? (
+              <>
+                <div className="relative">
+                  <Building2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <select className="field pl-8" value={form.department_id} onChange={(e) => updateField("department_id", e.target.value)}>
+                    <option value="">Select department</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="relative">
+                  <ShieldCheck size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <select className="field pl-8" value={form.admin_role} onChange={(e) => updateField("admin_role", e.target.value)}>
+                    <option value="">No specific role</option>
+                    <option value="hod">HOD</option>
+                    <option value="placement_officer">Placement Officer</option>
+                  </select>
+                </div>
+              </>
+            ) : null}
             <select className="field" value={form.modules_access} onChange={(e) => updateField("modules_access", e.target.value)}>
               <option value="both">All modules</option>
               <option value="ai_interview">AI Interview only</option>

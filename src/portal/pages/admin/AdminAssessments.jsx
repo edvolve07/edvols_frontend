@@ -100,9 +100,11 @@ export default function AdminAssessments() {
                     <span className={`badge ${
                       assessment.target_audience === 'department'
                         ? 'bg-blue-50 text-blue-700'
+                        : assessment.target_audience === 'individual'
+                        ? 'bg-amber-50 text-amber-700'
                         : 'bg-purple-50 text-purple-700'
                     }`}>
-                      {assessment.target_audience === 'department' ? 'Dept-wise' : 'All'}
+                      {assessment.target_audience === 'department' ? 'Dept-wise' : assessment.target_audience === 'individual' ? 'Individual' : 'All'}
                     </span>
                   </td>
                   <td>

@@ -72,6 +72,10 @@ import MentorshipInterviewPage from "./pages/MentorshipInterviewPage";
 import InterviewReplayPage from "./pages/InterviewReplayPage";
 import MentorshipAdminDashboard from "./pages/admin/MentorshipAdminDashboard";
 import HelpRequestsPage from "./pages/admin/HelpRequestsPage";
+import PricingPage from "./pages/PricingPage";
+import IndividualSignup from "./portal/pages/IndividualSignup";
+import SubscriptionBilling from "./pages/SubscriptionBilling";
+import IndividualStudents from "./pages/admin/IndividualStudents";
 
 function AppShell({ children }) {
   const navigate = useNavigate();
@@ -195,6 +199,7 @@ function ReportsResultDetailsRoute() {
 function homeForRole(role) {
   if (role === "master_admin") return "/master-admin/dashboard";
   if (role === "admin") return "/admin/dashboard";
+  if (role === "individual_student") return "/dashboard";
   return "/dashboard";
 }
 
@@ -214,6 +219,8 @@ export default function App() {
       <Route path="/login" element={<PortalLogin />} />
       <Route path="/access-revoked" element={<AccessRevoked />} />
       <Route path="/signup" element={<PortalSignup />} />
+      <Route path="/individual-signup" element={<IndividualSignup />} />
+      <Route path="/pricing" element={<PricingPage />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
@@ -243,12 +250,12 @@ export default function App() {
         <Route path="/journey" element={<AppShell><PlacementJourneyPage /></AppShell>} />
         <Route path="/mentorship/interview/:sessionId" element={<AppShell><MentorshipInterviewPage /></AppShell>} />
         <Route path="/mentorship/replays" element={<AppShell><InterviewReplayPage /></AppShell>} />
-        <Route path="/subscription" element={<Navigate to="/progress" replace />} />
+        <Route path="/subscription" element={<AppShell><SubscriptionBilling /></AppShell>} />
         <Route path="/mentorship" element={<Navigate to="/progress" replace />} />
         <Route path="/help" element={<AppShell><NeedHelpPage /></AppShell>} />
       </Route>
 
-      <Route element={<RequireRole roles={["admin"]} />}>
+      <Route element={<RequireRole roles={["admin", "master_admin"]} />}>
         <Route path="/admin/dashboard" element={<AppShell><EdvolsAdminDashboard /></AppShell>} />
         <Route path="/admin-dashboard" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="/admin/analytics/aptitude" element={<AppShell><AdminAptitudeAnalytics /></AppShell>} />
@@ -276,6 +283,7 @@ export default function App() {
         <Route path="/master-admin/institutions/:id" element={<AppShell><InstitutionDetailPage /></AppShell>} />
         <Route path="/master-admin/create-admin" element={<AppShell><CreateAdmin /></AppShell>} />
         <Route path="/master-admin/create-user" element={<AppShell><CreateUser /></AppShell>} />
+        <Route path="/master-admin/individual-students" element={<AppShell><IndividualStudents /></AppShell>} />
         <Route path="/master-admin/ai-usage" element={<AppShell><AiUsagePage /></AppShell>} />
         <Route path="/master-admin/programming" element={<AppShell><MasterAdminProblems /></AppShell>} />
         <Route path="/master-admin/programming/create" element={<AppShell><MasterAdminProblemForm /></AppShell>} />

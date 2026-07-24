@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, FileText, Minus, Plus, Sparkles, Users } from 'lucide-react';
+import { Building2, FileText, Minus, Plus, Search, Sparkles, User, Users } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { apiFetch } from '../utils/api';
 
@@ -35,6 +35,10 @@ export default function ManualGenerationForm() {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState([]);
+  const [individualStudents, setIndividualStudents] = useState([]);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const [userRole, setUserRole] = useState(null);
   const [targetAudience, setTargetAudience] = useState('all');
   const [selectedDepartments, setSelectedDepartments] = useState([]);
   const [form, setForm] = useState({
@@ -58,7 +62,23 @@ export default function ManualGenerationForm() {
     apiFetch('/admin/departments')
       .then((data) => setDepartments(data.departments || []))
       .catch(() => {});
+    apiFetch('/auth/me')
+      .then((data) => {
+        const role = data.user?.role || data.role;
+        setUserRole(role);
+        if (role === 'master_admin') setTargetAudience('individual');
+      })
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (targetAudience === 'individual') {
+      const params = studentSearch ? `?search=${encodeURIComponent(studentSearch)}` : '';
+      apiFetch(`/admin/individual-students${params}`)
+        .then((data) => setIndividualStudents(data.students || []))
+        .catch(() => {});
+    }
+  }, [targetAudience, studentSearch]);
 
   const questionCount = useMemo(
     () => (form.concept === 'All Concepts' ? form.perConcept * singleConceptCount : form.totalQuestions),
@@ -106,6 +126,9 @@ export default function ManualGenerationForm() {
       payload.append('target_audience', targetAudience);
       if (targetAudience === 'department' && selectedDepartments.length) {
         payload.append('department_ids', JSON.stringify(selectedDepartments));
+      }
+      if (targetAudience === 'individual' && selectedStudentIds.length) {
+        payload.append('assigned_student_ids', JSON.stringify(selectedStudentIds));
       }
 
       if (form.start_time) {
@@ -289,29 +312,45 @@ export default function ManualGenerationForm() {
       <div className="surface p-6">
         <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-400">Target Audience</h3>
         <div className="flex flex-wrap gap-3">
+          {userRole !== 'master_admin' && (
+            <>
+              <button
+                type="button"
+                onClick={() => { setTargetAudience('all'); setSelectedDepartments([]); setSelectedStudentIds([]); }}
+                className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition ${
+                  targetAudience === 'all'
+                    ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                All Students
+              </button>
+              <button
+                type="button"
+                onClick={() => { setTargetAudience('department'); setSelectedStudentIds([]); }}
+                className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition ${
+                  targetAudience === 'department'
+                    ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Building2 className="h-4 w-4" />
+                Department-wise
+              </button>
+            </>
+          )}
           <button
             type="button"
-            onClick={() => { setTargetAudience('all'); setSelectedDepartments([]); }}
+            onClick={() => { setTargetAudience('individual'); setSelectedDepartments([]); setStudentSearch(''); }}
             className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition ${
-              targetAudience === 'all'
+              targetAudience === 'individual'
                 ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
                 : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
             }`}
           >
-            <Users className="h-4 w-4" />
-            All Students
-          </button>
-          <button
-            type="button"
-            onClick={() => setTargetAudience('department')}
-            className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition ${
-              targetAudience === 'department'
-                ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
-                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <Building2 className="h-4 w-4" />
-            Department-wise
+            <User className="h-4 w-4" />
+            Individual Students
           </button>
         </div>
 
@@ -344,6 +383,73 @@ export default function ManualGenerationForm() {
                         className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                       />
                       {dept.name}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {targetAudience === 'individual' && (
+          <div className="mt-4">
+            <p className="mb-2 text-sm font-semibold text-slate-700">Select Individual Students</p>
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search students by name or email..."
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-4 text-sm text-slate-700 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </div>
+            {individualStudents.length > 0 && (
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-semibold text-emerald-700">{selectedStudentIds.length} / {individualStudents.length} student(s) selected</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allIds = individualStudents.map((s) => s._id);
+                    const allSelected = allIds.length === selectedStudentIds.length && allIds.every((id) => selectedStudentIds.includes(id));
+                    setSelectedStudentIds(allSelected ? [] : allIds);
+                  }}
+                  className="text-xs font-semibold text-emerald-600 hover:text-emerald-800 underline"
+                >
+                  {individualStudents.length === selectedStudentIds.length ? 'Deselect All' : 'Select Everyone'}
+                </button>
+              </div>
+            )}
+            {individualStudents.length === 0 ? (
+              <p className="text-sm text-slate-400">No individual students found.</p>
+            ) : (
+              <div className="max-h-60 overflow-y-auto rounded-lg border border-slate-200">
+                {individualStudents.map((s) => {
+                  const checked = selectedStudentIds.includes(s._id);
+                  return (
+                    <label
+                      key={s._id}
+                      className={`flex cursor-pointer items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-sm transition last:border-b-0 ${
+                        checked
+                          ? 'bg-emerald-50 text-emerald-800'
+                          : 'bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          setSelectedStudentIds((prev) =>
+                            checked ? prev.filter((id) => id !== s._id) : [...prev, s._id],
+                          );
+                        }}
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <div className="flex-1">
+                        <span className="font-medium">{s.name}</span>
+                        <span className="ml-2 text-xs text-slate-400">{s.email}</span>
+                      </div>
+                      {!s.is_active && <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-600">Inactive</span>}
                     </label>
                   );
                 })}

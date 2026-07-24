@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Star,
   Zap,
+  Lock,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
@@ -150,6 +151,7 @@ function ProgressPageInner() {
   const [readiness, setReadiness] = useState(null);
   const [levels, setLevels] = useState([]);
   const [currentLevel, setCurrentLevel] = useState(1);
+  const [accessLevel, setAccessLevel] = useState(6);
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -208,6 +210,10 @@ function ProgressPageInner() {
       setReadiness(get(5, {}).readiness || null);
       setLevels(get(6, {}).levels || []);
       setCurrentLevel(get(6, {}).current_level || 1);
+      const backendAccessLevel = get(6, {}).journey_access_level;
+      if (backendAccessLevel !== undefined && backendAccessLevel !== null) {
+        setAccessLevel(backendAccessLevel);
+      }
       const rawInterviews = get(7, {}).interviews || [];
       const mappedInterviews = rawInterviews.map((iv) => ({
         ...iv,
@@ -267,6 +273,7 @@ function ProgressPageInner() {
   }
 
   const isActive = !!subscription;
+  const isEnterprise = !!subscription?.level_access || subscription?.plan_key?.startsWith("level_1_");
   const interviewsUsed = lockStatus?.interviewsUsed ?? subscription?.interviews_used ?? 0;
   const interviewsTotal = lockStatus?.interviewsTotal ?? subscription?.interviews_total ?? 0;
   const interviewsRemaining = lockStatus?.remaining ?? Math.max(0, interviewsTotal - interviewsUsed);
@@ -471,7 +478,7 @@ function ProgressPageInner() {
                 </div>
               </div>
             )}
-            {isLimitReached && !isExpired && (
+            {isLimitReached && !isExpired && !isEnterprise && (
               <div className="mt-4">
                 <button
                   onClick={() => document.getElementById("plans-section")?.scrollIntoView({ behavior: "smooth" })}
@@ -601,31 +608,42 @@ function ProgressPageInner() {
         {/* Level progression */}
         {levels.length > 0 && (
           <section className="mb-8 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-            <h2 className="mb-4 text-lg font-bold text-slate-900">Level Progression</h2>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Level Progression</h2>
+              <span className="text-xs text-slate-500">Access up to Level {accessLevel}</span>
+            </div>
             <div className="flex flex-col gap-3">
               {levels.map((lvl) => {
-                const isActiveLvl = lvl.level === currentLevel;
-                const isCompleted = lvl.level < currentLevel;
+                const isAccessible = lvl.accessible;
+                const isActiveLvl = isAccessible && lvl.level === currentLevel;
+                const isCompleted = isAccessible && lvl.level < currentLevel;
+                const isLocked = !isAccessible;
                 return (
                   <div
                     key={lvl.level}
                     className={`flex items-center gap-4 rounded-lg border p-3 sm:p-4 transition ${
                       isActiveLvl ? "border-brand-300 bg-brand-50"
                         : isCompleted ? "border-emerald-200 bg-emerald-50"
+                        : isLocked ? "border-slate-100 bg-slate-50 opacity-50"
                         : "border-slate-100 bg-slate-50 opacity-60"
                     }`}
                   >
-                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${levelColors[lvl.level - 1] || "bg-slate-400"}`}>
-                      {lvl.level}
+                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
+                      isLocked ? "bg-slate-300" : (levelColors[lvl.level - 1] || "bg-slate-400")
+                    }`}>
+                      {isLocked ? <Lock className="h-4 w-4" /> : lvl.level}
                     </div>
                     <div className="flex-1">
-                      <p className={`text-sm font-semibold ${isActiveLvl ? "text-brand-900" : "text-slate-800"}`}>
+                      <p className={`text-sm font-semibold ${isActiveLvl ? "text-brand-900" : isLocked ? "text-slate-400" : "text-slate-800"}`}>
                         {lvl.name || `Level ${lvl.level}`}
                       </p>
-                      <p className="text-xs text-slate-500">Unlocks after {lvl.unlock_after_interviews || 0} interviews</p>
+                      <p className={`text-xs ${isLocked ? "text-slate-300" : "text-slate-500"}`}>
+                        {isLocked ? "Locked — complete previous levels to unlock" : `Unlocks after ${lvl.unlock_after_interviews || 0} interviews`}
+                      </p>
                     </div>
                     {isCompleted && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
                     {isActiveLvl && <span className="rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-semibold text-brand-700">Current</span>}
+                    {isLocked && <Lock className="h-4 w-4 text-slate-300" />}
                   </div>
                 );
               })}
@@ -633,8 +651,8 @@ function ProgressPageInner() {
           </section>
         )}
 
-        {/* Plans (only if no active subscription, limit reached, or expired) */}
-        {(!isActive || isLimitReached || isExpired) && (
+        {/* Plans (only if no active subscription, limit reached, or expired — NOT for enterprise) */}
+        {(!isActive || isLimitReached || isExpired) && !isEnterprise && (
           <section id="plans-section" className="mb-8">
             <div className="mb-5">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Choose a Plan</p>
