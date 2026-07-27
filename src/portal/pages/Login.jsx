@@ -76,7 +76,7 @@ export default function Login() {
           </div>
         </div>
 
-        <form onSubmit={submit} className="bg-white p-8 sm:p-12">
+        <form onSubmit={submit} autoComplete="off" className="bg-white p-8 sm:p-12">
           <div className="lg:hidden">
             <div className="flex items-center gap-3">
               <img src="/edvols%20logo.png" alt="Edvols" className="h-10 w-auto" />
@@ -104,6 +104,7 @@ export default function Login() {
               <input
                 type="email"
                 required
+                autoComplete="username"
                 value={form.email}
                 onChange={(event) => setForm({ ...form, email: event.target.value })}
                 className="mt-1.5 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 transition placeholder:text-slate-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
@@ -116,6 +117,7 @@ export default function Login() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
+                  autoComplete="new-password"
                   value={form.password}
                   onChange={(event) => setForm({ ...form, password: event.target.value })}
                   className="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-12 text-sm text-slate-800 transition placeholder:text-slate-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
@@ -141,7 +143,7 @@ export default function Login() {
 
           <p className="mt-8 text-center text-sm text-slate-500">
             New here?{' '}
-            <Link className="font-semibold text-brand-700 transition hover:text-brand-800" to="/individual-signup">
+            <Link className="font-semibold text-brand-700 transition hover:text-brand-800" to="/signup">
               Sign Up <ArrowRight className="ml-0.5 inline h-3.5 w-3.5" />
             </Link>
           </p>

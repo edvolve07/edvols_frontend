@@ -133,22 +133,27 @@ export default function CreateAdmin() {
             {form.institutionId ? (
               <>
                 <div className="relative">
-                  <Building2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <select className="field pl-8" value={form.department_id} onChange={(e) => updateField("department_id", e.target.value)}>
-                    <option value="">Select department</option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="relative">
                   <ShieldCheck size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <select className="field pl-8" value={form.admin_role} onChange={(e) => updateField("admin_role", e.target.value)}>
+                  <select className="field pl-8" value={form.admin_role} onChange={(e) => {
+                    updateField("admin_role", e.target.value);
+                    if (e.target.value !== "hod") updateField("department_id", "");
+                  }}>
                     <option value="">No specific role</option>
                     <option value="hod">HOD</option>
                     <option value="placement_officer">Placement Officer</option>
                   </select>
                 </div>
+                {form.admin_role === "hod" ? (
+                  <div className="relative">
+                    <Building2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <select className="field pl-8" value={form.department_id} onChange={(e) => updateField("department_id", e.target.value)}>
+                      <option value="">Select department</option>
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
               </>
             ) : null}
             <select className="field" value={form.modules_access} onChange={(e) => updateField("modules_access", e.target.value)}>

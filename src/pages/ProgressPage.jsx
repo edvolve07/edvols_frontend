@@ -298,6 +298,9 @@ function ProgressPageInner() {
   } else if (lockStatus?.allowed) {
     isAvailableNow = true;
     nextAvailableTime = null;
+  } else if (lockStatus?.reason === "gap_restriction" && lockStatus?.gapRemainingDays > 0) {
+    isAvailableNow = false;
+    nextAvailableTime = Date.now() + lockStatus.gapRemainingDays * 24 * 60 * 60 * 1000;
   } else if (lockStatus?.nextUnlockAt) {
     nextAvailableTime = new Date(lockStatus.nextUnlockAt).getTime();
     isAvailableNow = now >= nextAvailableTime;
@@ -322,7 +325,8 @@ function ProgressPageInner() {
   console.log("Completed Interviews:", interviewsUsed);
   console.log("Remaining Interviews:", interviewsRemaining);
   console.log("Latest Interview Time:", lockStatus?.lastInterviewAt || "N/A");
-  console.log("Cooldown Hours:", lockStatus?.gapDays ? lockStatus.gapDays * 24 : "N/A");
+  console.log("Gap Days:", lockStatus?.gapDays || "N/A");
+  console.log("Gap Remaining Days:", lockStatus?.gapRemainingDays || 0);
   console.log("Calculated Next Available:", nextAvailableTime ? new Date(nextAvailableTime).toISOString() : "N/A");
   console.log("Available Now:", isAvailableNow);
   console.log("Progress %:", usagePercent);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Check, ArrowRight, Zap, Crown, Star, Shield, Loader2 } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Check, ArrowRight, Zap, Crown, Star, Shield, Loader2, Gift } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/src/portal/context/AuthContext';
 import { openRazorpayCheckout } from '@/lib/razorpay';
@@ -11,8 +11,7 @@ const PLANS = [
     name: 'Basic',
     tagline: 'Get Started',
     price: 199,
-    gst: 36,
-    total: 235,
+    total: 199,
     access_level: 1,
     interviews: 4,
     icon: Zap,
@@ -38,8 +37,7 @@ const PLANS = [
     name: 'Advanced',
     tagline: 'Most Popular',
     price: 499,
-    gst: 90,
-    total: 589,
+    total: 499,
     access_level: 3,
     interviews: 12,
     icon: Star,
@@ -66,8 +64,7 @@ const PLANS = [
     name: 'Professional',
     tagline: 'Complete Package',
     price: 849,
-    gst: 153,
-    total: 1002,
+    total: 849,
     access_level: 6,
     interviews: 24,
     icon: Crown,
@@ -91,11 +88,22 @@ const PLANS = [
 
 export default function PricingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const isLoggedIn = !!user;
   const isIndividual = user?.role === 'individual_student';
   const [purchasing, setPurchasing] = useState("");
   const [payError, setPayError] = useState("");
+  const [referralCode, setReferralCode] = useState(searchParams.get('ref') || "");
+  const [referralApplied, setReferralApplied] = useState(false);
+
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      setReferralCode(ref.toUpperCase());
+      setReferralApplied(true);
+    }
+  }, [searchParams]);
 
   async function handleSubscribe(planKey) {
     setPurchasing(planKey);
@@ -103,7 +111,10 @@ export default function PricingPage() {
     try {
       const orderRes = await apiFetch("/api/subscription/create-order", {
         method: "POST",
-        body: JSON.stringify({ plan_key: planKey }),
+        body: JSON.stringify({
+          plan_key: planKey,
+          referral_code: referralCode || undefined,
+        }),
       });
 
       if (orderRes.mock) {
@@ -114,6 +125,7 @@ export default function PricingPage() {
             razorpay_order_id: orderRes.order_id,
             razorpay_payment_id: orderRes.order_id,
             razorpay_signature: "mock_sig",
+            referral_code: referralCode || undefined,
           }),
         });
         navigate("/subscription");
@@ -146,6 +158,7 @@ export default function PricingPage() {
           razorpay_order_id: paymentRes.razorpay_order_id,
           razorpay_payment_id: paymentRes.razorpay_payment_id,
           razorpay_signature: paymentRes.razorpay_signature,
+          referral_code: referralCode || undefined,
         }),
       });
 
@@ -166,6 +179,12 @@ export default function PricingPage() {
               {payError}
             </div>
           )}
+          {referralApplied && (
+            <div className="mb-6 mx-auto max-w-md rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700 flex items-center justify-center gap-2">
+              <Gift className="h-4 w-4" />
+              Referral code <span className="font-bold">{referralCode}</span> applied! You'll get rewards after purchase.
+            </div>
+          )}
           <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-1.5 text-sm font-semibold text-emerald-700">
             <Shield size={16} />
             Placement Readiness Platform
@@ -177,6 +196,20 @@ export default function PricingPage() {
             AI-powered interview preparation with 24 structured levels.
             Pick the plan that matches your placement goals.
           </p>
+          {!referralApplied && (
+            <div className="mt-6 mx-auto max-w-sm">
+              <div className="flex items-center gap-2">
+                <Gift className="h-4 w-4 text-emerald-500" />
+                <input
+                  type="text"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                  placeholder="Have a referral code?"
+                  className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold uppercase text-slate-700 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="grid gap-8 md:grid-cols-3 max-w-5xl mx-auto">
@@ -205,9 +238,7 @@ export default function PricingPage() {
                 <div className="mt-6">
                   <div className="flex items-baseline gap-1">
                     <span className="text-4xl font-bold text-slate-900">₹{plan.price}</span>
-                    <span className="text-sm text-slate-400">+ GST</span>
                   </div>
-                  <p className="text-sm text-slate-500 mt-1">₹{plan.total} including GST</p>
                 </div>
 
                 <div className="mt-6 rounded-xl bg-slate-50 p-4">
@@ -240,7 +271,7 @@ export default function PricingPage() {
                   onClick={() => {
                     if (isIndividual) handleSubscribe(plan.key);
                     else if (isLoggedIn) navigate('/dashboard');
-                    else navigate(`/individual-signup?plan=${plan.key}`);
+                    else navigate(`/signup?plan=${plan.key}`);
                   }}
                   disabled={purchasing === plan.key}
                   className={`mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r ${plan.color} px-5 py-3 text-sm font-bold text-white shadow-lg transition-all hover:shadow-xl active:scale-[0.98] disabled:opacity-50`}
@@ -258,7 +289,7 @@ export default function PricingPage() {
         <div className="mt-16 text-center">
           <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-6 py-2 text-sm text-slate-600">
             <Shield size={16} className="text-emerald-500" />
-            Secure payments via Razorpay · All plans include GST invoice
+            Secure payments via Razorpay
           </div>
           <p className="mt-4 text-sm text-slate-400">
             Upgrade anytime · Your progress is never lost · Enterprise plans available for institutions

@@ -6,9 +6,9 @@ import { useAuth } from '../context/AuthContext';
 import { openRazorpayCheckout } from '../../../lib/razorpay';
 
 const PLANS = {
-  basic: { name: 'Basic', price: 199, gst: 36, total: 235, interviews: 4, access_level: 1 },
-  advanced: { name: 'Advanced', price: 499, gst: 90, total: 589, interviews: 12, access_level: 3 },
-  professional: { name: 'Professional', price: 849, gst: 153, total: 1002, interviews: 24, access_level: 6 },
+  basic: { name: 'Basic', price: 199, total: 199, interviews: 4, access_level: 1 },
+  advanced: { name: 'Advanced', price: 499, total: 499, interviews: 12, access_level: 3 },
+  professional: { name: 'Professional', price: 849, total: 849, interviews: 24, access_level: 6 },
 };
 
 export default function IndividualSignup() {
@@ -154,7 +154,6 @@ export default function IndividualSignup() {
                   {key === 'advanced' && <span className="absolute -top-2.5 right-2 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">POPULAR</span>}
                   <p className="text-sm font-bold text-slate-900">{p.name}</p>
                   <p className="mt-1 text-lg font-bold text-emerald-700">₹{p.price}</p>
-                  <p className="text-xs text-slate-500">+₹{p.gst} GST</p>
                   <p className="mt-1 text-xs text-slate-500">{p.interviews} interviews · Level {p.access_level}</p>
                   {selectedPlan === key && <div className="absolute top-2 left-2"><Check size={14} className="text-emerald-600" /></div>}
                 </button>
@@ -209,13 +208,10 @@ export default function IndividualSignup() {
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold text-slate-900">₹{plan.total}</p>
-                  <p className="text-xs text-slate-500">incl. ₹{plan.gst} GST</p>
                 </div>
               </div>
               <div className="mt-4 border-t border-slate-200 pt-4">
-                <div className="flex justify-between text-sm"><span className="text-slate-600">Plan Amount</span><span className="font-medium">₹{plan.price}</span></div>
-                <div className="flex justify-between text-sm mt-1"><span className="text-slate-600">GST (18%)</span><span className="font-medium">₹{plan.gst}</span></div>
-                <div className="flex justify-between text-sm mt-2 border-t border-slate-200 pt-2"><span className="font-bold text-slate-900">Total</span><span className="font-bold text-slate-900">₹{plan.total}</span></div>
+                <div className="flex justify-between text-sm"><span className="font-bold text-slate-900">Total</span><span className="font-bold text-slate-900">₹{plan.total}</span></div>
               </div>
             </div>
 
@@ -230,7 +226,7 @@ export default function IndividualSignup() {
               </button>
             </div>
 
-            <p className="mt-4 text-center text-xs text-slate-400">Secured by Razorpay · GST invoice included</p>
+            <p className="mt-4 text-center text-xs text-slate-400">Secured by Razorpay</p>
           </div>
         )}
       </section>

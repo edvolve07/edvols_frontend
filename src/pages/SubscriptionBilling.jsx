@@ -20,6 +20,7 @@ import {
   Sparkles,
   ChevronUp,
   ChevronDown,
+  Gift,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { loadRazorpayScript, openRazorpayCheckout, createUpgradePlanKey } from "@/lib/razorpay";
@@ -53,9 +54,8 @@ function calcUpgradePreview(currentLevel, targetLevel) {
   const hasDiscount = levelsCount >= BULK_DISCOUNT_THRESHOLD;
   const discountAmount = hasDiscount ? Math.round(basePrice * 0.25) : 0;
   const finalPrice = basePrice - discountAmount;
-  const gstAmount = Math.round(finalPrice * 0.18);
-  const totalAmount = finalPrice + gstAmount;
-  return { levelsCount, basePrice, hasDiscount, discountAmount, finalPrice, gstAmount, totalAmount };
+  const totalAmount = finalPrice;
+  return { levelsCount, basePrice, hasDiscount, discountAmount, finalPrice, totalAmount };
 }
 
 export default function SubscriptionBilling() {
@@ -70,6 +70,8 @@ export default function SubscriptionBilling() {
   const [targetLevel, setTargetLevel] = useState(2);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
+  const [referralValidation, setReferralValidation] = useState(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -107,7 +109,7 @@ export default function SubscriptionBilling() {
 
       const orderRes = await apiFetch("/api/subscription/create-upgrade-order", {
         method: "POST",
-        body: JSON.stringify({ target_level: targetLevel }),
+        body: JSON.stringify({ target_level: targetLevel, referral_code: referralCode || undefined }),
       });
 
       if (orderRes.mock) {
@@ -118,6 +120,7 @@ export default function SubscriptionBilling() {
             razorpay_order_id: orderRes.order_id,
             razorpay_payment_id: orderRes.order_id,
             razorpay_signature: "mock_sig",
+            referral_code: referralCode || undefined,
           }),
         });
         setShowUpgrade(false);
@@ -151,6 +154,7 @@ export default function SubscriptionBilling() {
           razorpay_order_id: paymentRes.razorpay_order_id,
           razorpay_payment_id: paymentRes.razorpay_payment_id,
           razorpay_signature: paymentRes.razorpay_signature,
+          referral_code: referralCode || undefined,
         }),
       });
 
@@ -221,7 +225,6 @@ export default function SubscriptionBilling() {
               <div className="rounded-lg bg-slate-50 p-4">
                 <p className="text-xs font-semibold text-slate-500">Amount Paid</p>
                 <p className="mt-1 text-xl font-bold text-slate-900">₹{subscription.amount_paid}</p>
-                <p className="text-xs text-slate-400">+₹{subscription.gst_amount} GST</p>
               </div>
               <div className="rounded-lg bg-slate-50 p-4">
                 <p className="text-xs font-semibold text-slate-500">Started</p>
@@ -320,20 +323,30 @@ export default function SubscriptionBilling() {
                         <span className="font-semibold text-emerald-600">-₹{preview.discountAmount}</span>
                       </div>
                     )}
-                    <div className="mt-2 flex items-center justify-between text-sm">
-                      <span className="text-slate-500">GST (18%)</span>
-                      <span>₹{preview.gstAmount}</span>
-                    </div>
                     <div className="mt-3 border-t border-slate-200 pt-3 flex items-center justify-between">
                       <span className="text-base font-bold text-slate-900">Total</span>
                       <span className="text-xl font-bold text-slate-900">₹{preview.totalAmount}</span>
                     </div>
                     {preview.hasDiscount && (
-                      <p className="mt-2 text-xs text-emerald-600 font-medium">You save ₹{preview.discountAmount + Math.round(preview.discountAmount * 0.18)} including GST!</p>
+                      <p className="mt-2 text-xs text-emerald-600 font-medium">You save ₹{preview.discountAmount}!</p>
                     )}
                   </div>
                 );
               })()}
+
+              <div className="mt-5 rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Gift className="h-4 w-4 text-emerald-600" />
+                  <span className="text-sm font-bold text-emerald-700">Have a referral code?</span>
+                </div>
+                <input
+                  type="text"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                  placeholder="Enter referral code"
+                  className="block w-full rounded-lg border border-emerald-200 bg-white px-3 py-2.5 text-sm font-semibold uppercase text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none"
+                />
+              </div>
 
               <button
                 onClick={handleLevelUpgrade}
@@ -382,7 +395,6 @@ export default function SubscriptionBilling() {
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <p className="text-sm font-bold text-slate-900">₹{tx.total_amount}</p>
-                    <p className="text-xs text-slate-500">incl. GST</p>
                   </div>
                   <button onClick={() => viewInvoice(tx.id)} disabled={invoiceLoading} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
                     <Download className="inline h-3.5 w-3.5" /> Invoice
@@ -413,7 +425,6 @@ export default function SubscriptionBilling() {
               </div>
               <div className="border-t border-slate-200 pt-3 space-y-1">
                 <div className="flex justify-between"><span className="text-slate-500">Subtotal</span><span>₹{selectedInvoice.subtotal}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">GST (18%)</span><span>₹{selectedInvoice.gst}</span></div>
                 <div className="flex justify-between text-base font-bold"><span>Total Paid</span><span>₹{selectedInvoice.total}</span></div>
               </div>
               <div className="border-t border-slate-200 pt-3">

@@ -16,9 +16,9 @@ import {
 import { apiFetch } from "@/lib/api";
 
 const PLANS = [
-  { key: "basic", name: "Basic", price: 499, gst: 90, total: 589, interviews: 4, access_level: 1 },
-  { key: "advanced", name: "Advanced", price: 1199, gst: 216, total: 1415, interviews: 12, access_level: 3 },
-  { key: "professional", name: "Professional", price: 1999, gst: 360, total: 2359, interviews: 24, access_level: 6 },
+  { key: "basic", name: "Basic", price: 499, total: 499, interviews: 4, access_level: 1 },
+  { key: "advanced", name: "Advanced", price: 1199, total: 1199, interviews: 12, access_level: 3 },
+  { key: "professional", name: "Professional", price: 1999, total: 1999, interviews: 24, access_level: 6 },
 ];
 
 function formatDate(value) {
@@ -279,7 +279,7 @@ export default function IndividualStudents() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-bold text-slate-900">{plan.name}</p>
-                          <p className="text-xs text-slate-500">Level {plan.access_level} · {plan.interviews} interviews · ₹{plan.total} incl. GST</p>
+                          <p className="text-xs text-slate-500">Level {plan.access_level} · {plan.interviews} interviews · ₹{plan.total}</p>
                         </div>
                         {isCurrent ? (
                           <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-700">CURRENT</span>

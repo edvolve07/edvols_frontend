@@ -10,6 +10,7 @@ import {
   RotateCcw,
   Send,
   Square,
+  Timer,
   Upload,
   Video,
   VideoOff,
@@ -487,6 +488,50 @@ function formatLockDate(value) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(d);
 }
 
+function GapCountdown({ lastInterviewAt, gapDays }) {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (!lastInterviewAt || !gapDays) return null;
+
+  const unlocksAt = new Date(lastInterviewAt).getTime() + gapDays * 24 * 60 * 60 * 1000;
+  const diff = Math.max(0, unlocksAt - now);
+
+  if (diff <= 0) return null;
+
+  const totalSeconds = Math.floor(diff / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const pad = (n) => String(n).padStart(2, "0");
+
+  const units = [
+    { label: "DAYS", value: days },
+    { label: "HRS", value: hours },
+    { label: "MIN", value: minutes },
+    { label: "SEC", value: seconds },
+  ];
+
+  return (
+    <div className="mt-6 flex items-center justify-center gap-3">
+      {units.map(({ label, value }) => (
+        <div key={label} className="flex flex-col items-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-900 text-xl font-bold text-white shadow-lg sm:h-20 sm:w-20 sm:text-2xl">
+            {pad(value)}
+          </div>
+          <span className="mt-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function InterviewPage() {
   const navigate = useNavigate();
   const [phase, setPhase] = useState("setup");
@@ -600,20 +645,38 @@ export default function InterviewPage() {
       );
     }
     if (lockStatus && lockStatus.allowed === false) {
+      const isGapLock = lockStatus.reason === "gap_restriction";
       return (
         <div className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center px-4 py-10 text-center">
           <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-amber-50 text-amber-500">
-            <Clock className="h-10 w-10" />
+            <Timer className="h-10 w-10" />
           </div>
           <h2 className="text-xl font-bold text-slate-900">Interview Locked</h2>
-          <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-600">
-            {lockStatus.reason || "You can start your next interview after the 5-day gap period."}
-          </p>
-          {lockStatus.nextUnlockAt && (
-            <p className="mt-3 rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800">
-              Available on {formatLockDate(lockStatus.nextUnlockAt)}
-              {lockStatus.daysRemaining > 0 && ` — ${lockStatus.daysRemaining} day${lockStatus.daysRemaining !== 1 ? "s" : ""} left`}
-            </p>
+          {isGapLock ? (
+            <>
+              <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-600">
+                You can start your next interview after the gap period ends.
+              </p>
+              <GapCountdown
+                lastInterviewAt={lockStatus.lastInterviewAt}
+                gapDays={lockStatus.gapDays}
+              />
+              <p className="mt-4 rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800">
+                Gap restriction: {lockStatus.gapDays} day(s) between interviews
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-600">
+                {lockStatus.reason || "You can start your next interview after the gap period."}
+              </p>
+              {lockStatus.nextUnlockAt && (
+                <p className="mt-3 rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800">
+                  Available on {formatLockDate(lockStatus.nextUnlockAt)}
+                  {lockStatus.daysRemaining > 0 && ` — ${lockStatus.daysRemaining} day${lockStatus.daysRemaining !== 1 ? "s" : ""} left`}
+                </p>
+              )}
+            </>
           )}
           <button
             onClick={() => navigate("/progress")}

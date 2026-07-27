@@ -63,6 +63,71 @@ function ModuleBadge({ enabled, label }) {
   );
 }
 
+function InterviewGapSetting({ institutionId, currentGapDays, onUpdate }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [gapDays, setGapDays] = useState(currentGapDays);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { setGapDays(currentGapDays); }, [currentGapDays]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await apiFetch(`/api/institutions/${institutionId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ interview_gap_days: gapDays }),
+      });
+      onUpdate(gapDays);
+      setIsEditing(false);
+    } catch (err) {
+      alert(err.message || "Failed to update setting.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold text-slate-700">Interview Gap Restriction</p>
+          <p className="text-xs text-slate-500">
+            {currentGapDays > 0
+              ? `Students must wait ${currentGapDays} day(s) between interviews`
+              : "No restriction — students can start interviews any time"}
+          </p>
+        </div>
+        <button
+          onClick={() => setIsEditing((v) => !v)}
+          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+        >
+          <Pencil size={13} className="inline mr-1" />
+          {isEditing ? "Cancel" : "Edit"}
+        </button>
+      </div>
+      {isEditing && (
+        <div className="mt-3 flex items-center gap-2">
+          <input
+            type="number"
+            min={0}
+            value={gapDays}
+            onChange={(e) => setGapDays(Math.max(0, parseInt(e.target.value) || 0))}
+            className="w-24 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm font-medium text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          />
+          <span className="text-xs text-slate-500">days</span>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Modal({ open, onClose, title, children }) {
   if (!open) return null;
   return (
@@ -227,22 +292,24 @@ function AdminFormModal({ open, onClose, institutionId, departments, onCreated }
             <div className="relative">
               <ShieldCheck size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <select className="field pl-8" value={form.admin_role}
-                onChange={(e) => setForm((p) => ({ ...p, admin_role: e.target.value }))}>
+                onChange={(e) => setForm((p) => ({ ...p, admin_role: e.target.value, department_id: e.target.value !== "hod" ? "" : p.department_id }))}>
                 <option value="">Select role</option>
                 <option value="hod">HOD</option>
                 <option value="placement_officer">Placement Officer</option>
               </select>
             </div>
-            <div className="relative">
-              <Building size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <select className="field pl-8" value={form.department_id}
-                onChange={(e) => setForm((p) => ({ ...p, department_id: e.target.value }))}>
-                <option value="">Select department</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
-            </div>
+            {form.admin_role === "hod" ? (
+              <div className="relative">
+                <Building size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <select className="field pl-8" value={form.department_id}
+                  onChange={(e) => setForm((p) => ({ ...p, department_id: e.target.value }))}>
+                  <option value="">Select department</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
           </div>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose}
@@ -635,6 +702,8 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
   const [impact, setImpact] = useState(null);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null);
+  const [selectedPlan, setSelectedPlan] = useState("");
+  const [logs, setLogs] = useState([]);
 
   useEffect(() => {
     if (!open) {
@@ -646,11 +715,13 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
       setStudentSearch("");
       setImpact(null);
       setResult(null);
+      setSelectedPlan("");
+      setLogs([]);
     }
   }, [open]);
 
   useEffect(() => {
-    if (!open || scope === "individual") return;
+    if (!open || scope === "individual") { setImpact(null); return; }
     const params = new URLSearchParams({ institution_id: institutionId });
     if (selectedDept) params.set("department_id", selectedDept);
     if (selectedYear) params.set("year", selectedYear);
@@ -682,6 +753,7 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
   async function handleAssign() {
     setSaving(true);
     setResult(null);
+    setLogs([]);
     try {
       if (selectedLevels.length === 0) {
         setResult({ type: "error", message: "Select at least one level." });
@@ -689,6 +761,8 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
         return;
       }
       const maxLevel = Math.max(...selectedLevels);
+      const levelNames = selectedLevels.sort((a, b) => a - b).map((l) => `L${l}`).join(", ");
+
       if (scope === "individual") {
         if (selectedStudents.length === 0) {
           setResult({ type: "error", message: "Select at least one student." });
@@ -699,6 +773,12 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
           method: "POST",
           body: JSON.stringify({ student_ids: selectedStudents, access_level: maxLevel }),
         });
+        if (selectedPlan) {
+          await apiFetch("/api/mentorship/admin/subscriptions/bulk", {
+            method: "POST",
+            body: JSON.stringify({ student_ids: selectedStudents, plan_key: selectedPlan }),
+          });
+        }
       } else {
         const body = { access_level: maxLevel };
         if (selectedDept) body.department_id = selectedDept;
@@ -707,12 +787,20 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
           method: "POST",
           body: JSON.stringify(body),
         });
+        if (selectedPlan) {
+          await apiFetch(`/api/mentorship/admin/subscriptions/institution/${institutionId}`, {
+            method: "POST",
+            body: JSON.stringify({ plan_key: selectedPlan }),
+          });
+        }
       }
-      const levelNames = selectedLevels.sort((a, b) => a - b).map((l) => `Level ${l}`).join(", ");
-      setResult({ type: "success", message: `Journey access assigned: ${levelNames}!` });
+
+      const planMsg = selectedPlan ? ` + ${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} plan` : "";
+      setResult({ type: "success", message: `Done! Journey: ${levelNames}${planMsg}` });
       onAssigned();
+      setTimeout(() => onClose(), 1500);
     } catch (err) {
-      setResult({ type: "error", message: err.message || "Failed to assign journey access." });
+      setResult({ type: "error", message: err.message || "Failed to assign." });
     } finally {
       setSaving(false);
     }
@@ -726,7 +814,7 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Crown size={18} className="text-brand-600" />
-            <h2 className="text-lg font-semibold text-slate-950">Assign Journey Access</h2>
+            <h2 className="text-lg font-semibold text-slate-950">Assign Access & Plan</h2>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
             <X size={18} />
@@ -743,7 +831,7 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
         )}
 
         <div className="mb-4">
-          <label className="mb-1 block text-xs font-semibold text-slate-600">Assign to</label>
+          <label className="mb-1 block text-xs font-semibold text-slate-600">Step 1: Assign to</label>
           <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
             {[
               ["institution", "Whole Institution"],
@@ -760,7 +848,7 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
         </div>
 
         <div className="mb-4">
-          <label className="mb-1 block text-xs font-semibold text-slate-600">Select Levels to Assign</label>
+          <label className="mb-1 block text-xs font-semibold text-slate-600">Step 2: Select Journey Levels</label>
           <div className="space-y-2">
             {JOURNEY_LEVELS.map((l) => (
               <label key={l.level} className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition ${
@@ -784,6 +872,39 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
               {selectedLevels.length} level(s) selected: {selectedLevels.sort((a, b) => a - b).map((l) => `L${l}`).join(", ")}
             </p>
           )}
+        </div>
+
+        <div className="mb-4">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">Step 3: Subscription Plan (optional)</label>
+          <div className="space-y-2">
+            {PLAN_OPTIONS.map((plan) => (
+              <label key={plan.key} className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition ${
+                selectedPlan === plan.key
+                  ? "border-emerald-300 bg-emerald-50"
+                  : "border-slate-200 bg-white hover:border-slate-300"
+              }`}>
+                <input type="radio" name="sub-plan" checked={selectedPlan === plan.key}
+                  onChange={() => setSelectedPlan(selectedPlan === plan.key ? "" : plan.key)}
+                  className="mt-0.5 h-4 w-4 border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-slate-900">{plan.name}</p>
+                    <span className="text-sm font-bold text-emerald-600">₹{plan.price}</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">Level {plan.access_level} · {plan.interviews} interviews</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{plan.description}</p>
+                </div>
+              </label>
+            ))}
+            <button type="button" onClick={() => setSelectedPlan("")}
+              className={`w-full rounded-lg border p-2 text-xs font-semibold transition ${
+                selectedPlan === ""
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                  : "border-slate-200 text-slate-400 hover:border-slate-300"
+              }`}>
+              No plan (journey access only)
+            </button>
+          </div>
         </div>
 
         {scope === "institution" && (
@@ -878,7 +999,9 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
           <div className="mb-4 rounded-lg bg-brand-50 border border-brand-100 p-3 text-sm">
             <p className="font-semibold text-brand-800">Impact Preview</p>
             <p className="text-xs text-brand-600 mt-1">
-              {impact.total_affected ?? 0} student(s) will receive journey access up to <strong>Level {selectedLevels.length > 0 ? Math.max(...selectedLevels) : "—"}</strong>.
+              {impact.total_affected ?? 0} student(s) will be affected.
+              {selectedLevels.length > 0 && <> Up to <strong>Level {Math.max(...selectedLevels)}</strong></>}
+              {selectedPlan && <> · <strong className="capitalize">{selectedPlan}</strong> plan</>}
             </p>
           </div>
         )}
@@ -889,13 +1012,19 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
           <button onClick={handleAssign} disabled={saving}
             className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-70">
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Crown size={15} />}
-            {saving ? "Assigning..." : "Assign Journey Access"}
+            {saving ? "Assigning..." : "Assign"}
           </button>
         </div>
       </div>
     </div>
   );
 }
+
+const PLAN_OPTIONS = [
+  { key: "basic", name: "Basic", price: 499, interviews: 4, access_level: 1, description: "Resume, Portfolio, Communication, Profile" },
+  { key: "advanced", name: "Advanced", price: 1199, interviews: 12, access_level: 3, description: "Technical Interview, HR, Behavioral, Mock" },
+  { key: "professional", name: "Professional", price: 1999, interviews: 24, access_level: 6, description: "Full access — System Design, Leadership, Placement Master" },
+];
 
 export default function InstitutionDetail() {
   const { user } = useAuth();
@@ -980,9 +1109,23 @@ export default function InstitutionDetail() {
 
   function loadStudents() {
     setStudentsLoading(true);
-    apiFetch(`/api/master/users?institution_id=${id}&role=student&limit=200`)
-      .then((data) => setStudents(data.users || []))
-      .catch(() => {})
+    Promise.all([
+      apiFetch(`/api/master/users?institution_id=${id}&role=student&limit=200`),
+      apiFetch(`/api/mentorship/admin/students?institution_id=${id}&limit=200`),
+    ])
+      .then(([userData, mentorData]) => {
+        const users = userData.users || [];
+        const mentorMap = new Map();
+        for (const m of (mentorData.students || [])) {
+          mentorMap.set(m.id, m);
+        }
+        const merged = users.map((u) => {
+          const m = mentorMap.get(u.id);
+          return { ...u, subscription: m?.subscription || null, journey: m?.journey || null };
+        });
+        setStudents(merged);
+      })
+      .catch((err) => { console.error("Failed to load students:", err); })
       .finally(() => setStudentsLoading(false));
   }
 
@@ -1068,6 +1211,14 @@ export default function InstitutionDetail() {
             <ModuleBadge key={key} enabled={institution.modules?.[key]} label={label} />
           ))}
         </div>
+
+        {isMasterAdmin && (
+          <InterviewGapSetting
+            institutionId={institution.id}
+            currentGapDays={institution.interview_gap_days || 0}
+            onUpdate={(newGap) => setInstitution((prev) => ({ ...prev, interview_gap_days: newGap }))}
+          />
+        )}
       </section>
 
       <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -1208,6 +1359,15 @@ export default function InstitutionDetail() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    {student.subscription?.status === "active" ? (
+                      <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                        L{student.subscription.level_access} · {student.subscription.plan_name}
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-400">
+                        No plan
+                      </span>
+                    )}
                     {student.assigned_admin_name ? (
                       <span className="text-xs text-slate-400">via {student.assigned_admin_name}</span>
                     ) : null}
@@ -1246,7 +1406,7 @@ export default function InstitutionDetail() {
         institutionId={id} onCreated={loadDepartments} />
 
       <JourneyAccessAssignModal open={showAssignJourney} onClose={() => setShowAssignJourney(false)}
-        institutionId={id} departments={departments} students={students} onAssigned={() => { loadStudents(); refreshAdmins(); }} />
+        institutionId={id} departments={departments} students={students} onAssigned={() => { loadStudents(); refreshAnalytics(); }} />
 
       <StudentEditModal open={!!editingStudent} onClose={() => setEditingStudent(null)}
         student={editingStudent} departments={departments} onSaved={() => { setEditingStudent(null); loadStudents(); }} />
