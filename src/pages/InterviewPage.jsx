@@ -18,7 +18,7 @@ import {
 import clsx from "clsx";
 import { DOMAIN_ROLES, INTERVIEW_DOMAINS, INTERVIEW_ROLES, METRIC_LABELS } from "@/src/constants";
 import { useNavigate } from "@/src/navigation";
-import { apiFetch, endInterview, getSessionState, startInterview, submitAnswer as submitInterviewAnswer } from "@/lib/api";
+import { apiFetch, endInterview, getSessionState, startInterview, submitAnswer as submitInterviewAnswer, getSavedResume } from "@/lib/api";
 import { useRecorder } from "@/components/VoiceRecorder";
 
 function MetricBar({ label, value }) {
@@ -47,6 +47,14 @@ function SetupForm({ onStart }) {
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [savedResume, setSavedResume] = useState(null);
+  const [useSaved, setUseSaved] = useState(false);
+
+  useEffect(() => {
+    getSavedResume().then((res) => {
+      if (res?.hasSaved) setSavedResume(res);
+    }).catch(() => {});
+  }, []);
 
   const domainRoles = DOMAIN_ROLES[domain] ?? [];
 
@@ -72,11 +80,12 @@ function SetupForm({ onStart }) {
   }
 
   async function submit() {
-    if (!file || loading) return;
+    if (loading) return;
+    if (!useSaved && !file) return;
     setLoading(true);
     setError("");
     try {
-      await onStart(domain, role, file);
+      await onStart(domain, role, useSaved ? null : file, useSaved);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to start interview.");
     } finally {
@@ -158,47 +167,70 @@ function SetupForm({ onStart }) {
 
         <aside className="rounded-2xl border border-slate-100 bg-white p-5 shadow-card">
           <h2 className="mb-4 text-sm font-semibold text-slate-900">Resume PDF</h2>
-          <div
-            onDragOver={(event) => {
-              event.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(event) => {
-              event.preventDefault();
-              setDragging(false);
-              const droppedFile = event.dataTransfer.files[0];
-              if (droppedFile?.type === "application/pdf") setFile(droppedFile);
-            }}
-            className={clsx(
-              "flex min-h-44 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-5 text-center transition",
-              dragging ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-slate-50"
-            )}
-          >
-            {file ? (
-              <>
-                <FileText size={28} className="text-emerald-500" />
-                <p className="max-w-full truncate text-sm font-medium text-slate-800">{file.name}</p>
-                <button onClick={() => setFile(null)} className="text-xs font-semibold text-emerald-600">
-                  Replace file
-                </button>
-              </>
-            ) : (
-              <>
-                <Upload size={28} className="text-slate-400" />
-                <p className="text-sm text-slate-500">Drop your PDF here</p>
-                <label className="cursor-pointer text-sm font-semibold text-emerald-600">
-                  Browse files
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-                  />
-                </label>
-              </>
-            )}
-          </div>
+
+          {savedResume?.hasSaved && (
+            <div className="mb-4">
+              <button
+                onClick={() => { setUseSaved(true); setFile(null); setError(""); }}
+                className={clsx(
+                  "w-full rounded-xl border px-4 py-3 text-left text-sm font-medium transition",
+                  useSaved
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 size={16} className={useSaved ? "text-emerald-500" : "text-slate-400"} />
+                  Use saved resume
+                </span>
+                <span className="mt-1 block text-xs text-slate-500 truncate">{savedResume.name}</span>
+              </button>
+            </div>
+          )}
+
+          {(!useSaved || !savedResume?.hasSaved) && (
+            <div
+              onDragOver={(event) => {
+                event.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(event) => {
+                event.preventDefault();
+                setDragging(false);
+                const droppedFile = event.dataTransfer.files[0];
+                if (droppedFile?.type === "application/pdf") { setFile(droppedFile); setUseSaved(false); }
+              }}
+              className={clsx(
+                "flex min-h-44 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-5 text-center transition",
+                dragging ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-slate-50"
+              )}
+            >
+              {file ? (
+                <>
+                  <FileText size={28} className="text-emerald-500" />
+                  <p className="max-w-full truncate text-sm font-medium text-slate-800">{file.name}</p>
+                  <button onClick={() => setFile(null)} className="text-xs font-semibold text-emerald-600">
+                    Replace file
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Upload size={28} className="text-slate-400" />
+                  <p className="text-sm text-slate-500">Drop your PDF here</p>
+                  <label className="cursor-pointer text-sm font-semibold text-emerald-600">
+                    Browse files
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      onChange={(event) => { setFile(event.target.files?.[0] ?? null); setUseSaved(false); }}
+                    />
+                  </label>
+                </>
+              )}
+            </div>
+          )}
 
           {error && (
             <div className="mt-4 flex gap-2 rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-600">
@@ -208,7 +240,7 @@ function SetupForm({ onStart }) {
 
           <button
             onClick={submit}
-            disabled={!file || loading}
+            disabled={(!useSaved && !file) || loading}
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-4 text-sm font-semibold text-white shadow-card transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <Mic2 size={18} />}
@@ -576,8 +608,8 @@ export default function InterviewPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleStart(domain, role, file) {
-    const data = await startInterview(domain, role, file);
+  async function handleStart(domain, role, file, useSaved = false) {
+    const data = await startInterview(domain, role, file, useSaved);
     const interviewSession = { ...data, domain, role };
     setSession(interviewSession);
     setQuestion(interviewSession.question);

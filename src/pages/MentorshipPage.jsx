@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Loader2, Target, TrendingUp, Play, FileText, Award, Clock, ArrowRight, Upload, BarChart3, CheckCircle2, Lock } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { Loader2, Target, TrendingUp, Play, FileText, Award, Clock, ArrowRight, Upload, BarChart3, CheckCircle2, Lock, RefreshCw } from "lucide-react";
+import { apiFetch, getSavedResume, saveResume } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 
 const levelColors = ["bg-slate-400", "bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-rose-500"];
@@ -22,6 +22,8 @@ export default function MentorshipPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [savedResume, setSavedResume] = useState(null);
+  const [showUploadOption, setShowUploadOption] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -36,6 +38,7 @@ export default function MentorshipPage() {
         interviewsRes,
         comparisonsRes,
         lockRes,
+        savedResumeRes,
       ] = await Promise.all([
         apiFetch("/api/mentorship/journey"),
         apiFetch("/api/mentorship/progress"),
@@ -45,6 +48,7 @@ export default function MentorshipPage() {
         apiFetch("/api/mentorship/journey/interviews"),
         apiFetch("/api/mentorship/resume/comparisons"),
         apiFetch("/api/mentorship/lock-status"),
+        getSavedResume(),
       ]);
 
       setJourney(journeyRes.journey);
@@ -59,6 +63,9 @@ export default function MentorshipPage() {
       setInterviews(interviewsRes.interviews || []);
       setComparisons(comparisonsRes.comparisons || []);
       setLockStatus(lockRes);
+      if (savedResumeRes?.hasSaved) {
+        setSavedResume(savedResumeRes);
+      }
     } catch (err) {
       setError(err.message || "Failed to load mentorship data");
     } finally {
@@ -86,12 +93,30 @@ export default function MentorshipPage() {
         method: "POST",
         body: formData,
       });
+      setSavedResume({ hasSaved: true, name: file.name });
       navigate(`/mentorship/interview/${res.session_id}`);
     } catch (err) {
       setError(err.message || "Failed to start interview");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }, [navigate]);
+
+  const handleStartWithSaved = useCallback(async () => {
+    try {
+      setUploading(true);
+      setError(null);
+      const res = await apiFetch("/api/mentorship/interview/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ use_saved: true }),
+      });
+      navigate(`/mentorship/interview/${res.session_id}`);
+    } catch (err) {
+      setError(err.message || "Failed to start interview");
+    } finally {
+      setUploading(false);
     }
   }, [navigate]);
 
@@ -171,26 +196,61 @@ export default function MentorshipPage() {
         </section>
 
         <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading || (lockStatus && !lockStatus.can_start)}
-            className="group flex items-center gap-4 rounded-xl border border-brand-200 bg-brand-50 p-4 text-left transition hover:border-brand-300 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50 sm:p-5"
-          >
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white transition group-hover:bg-brand-700">
-              {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
+          {savedResume?.hasSaved && !showUploadOption ? (
+            <div className="flex flex-col gap-2 rounded-xl border border-brand-200 bg-brand-50 p-4 sm:p-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-brand-900">Start Interview</p>
+                  <p className="mt-0.5 text-xs text-brand-600">Using saved resume: {savedResume.name}</p>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={handleStartWithSaved}
+                  disabled={uploading || (lockStatus && !lockStatus.can_start)}
+                  className="flex-1 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                >
+                  {uploading ? <Loader2 className="inline h-4 w-4 animate-spin" /> : "Use Saved Resume"}
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="rounded-lg border border-brand-300 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 disabled:opacity-50"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </button>
+              </div>
+              {lockStatus && !lockStatus.can_start && (
+                <p className="text-xs text-brand-600">
+                  Available {new Date(lockStatus.next_available_at).toLocaleTimeString()}
+                </p>
+              )}
             </div>
-            <div className="flex-1">
-              <p className="font-semibold text-brand-900">
-                {uploading ? "Starting..." : "Start Interview"}
-              </p>
-              <p className="mt-0.5 text-xs text-brand-600">
-                {lockStatus && !lockStatus.can_start
-                  ? `Available ${new Date(lockStatus.next_available_at).toLocaleTimeString()}`
-                  : "Upload your resume to begin"}
-              </p>
-            </div>
-            <ArrowRight className="h-4 w-4 text-brand-400 transition group-hover:translate-x-0.5 group-hover:text-brand-600" />
-          </button>
+          ) : (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || (lockStatus && !lockStatus.can_start)}
+              className="group flex items-center gap-4 rounded-xl border border-brand-200 bg-brand-50 p-4 text-left transition hover:border-brand-300 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50 sm:p-5"
+            >
+              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white transition group-hover:bg-brand-700">
+                {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-brand-900">
+                  {uploading ? "Starting..." : "Start Interview"}
+                </p>
+                <p className="mt-0.5 text-xs text-brand-600">
+                  {lockStatus && !lockStatus.can_start
+                    ? `Available ${new Date(lockStatus.next_available_at).toLocaleTimeString()}`
+                    : "Upload your resume to begin"}
+                </p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-brand-400 transition group-hover:translate-x-0.5 group-hover:text-brand-600" />
+            </button>
+          )}
           <input
             ref={fileInputRef}
             type="file"
