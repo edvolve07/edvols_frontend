@@ -14,7 +14,7 @@ import {
   Zap,
   Lock,
 } from "lucide-react";
-import { usePlacementProgress } from "@/hooks/usePlacementProgress";
+import { usePlacementProgress } from "@/src/hooks/usePlacementProgress";
 import { useNavigate } from "react-router-dom";
 
 class ErrorBoundary extends Component {
