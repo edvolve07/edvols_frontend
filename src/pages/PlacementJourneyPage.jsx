@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, Component } from "react";
+import { useState, Component } from "react";
 import {
   Loader2,
   Target,
@@ -16,7 +16,7 @@ import {
   AlertCircle,
   Lock,
 } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { usePlacementProgress } from "@/hooks/usePlacementProgress";
 import { useNavigate } from "react-router-dom";
 
 class ErrorBoundary extends Component {
@@ -45,72 +45,17 @@ class ErrorBoundary extends Component {
 }
 
 const levelColors = ["bg-slate-400", "bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-rose-500"];
-const levelNames = ["Foundation", "Professional", "Advanced", "Expert", "Mentor", "Placement Master"];
 
 function formatDateTime(value) {
-  if (!value) return "—";
+  if (!value) return "\u2014";
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "\u2014";
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(d);
 }
 
 function PlacementJourneyInner() {
   const navigate = useNavigate();
-  const [journey, setJourney] = useState(null);
-  const [levels, setLevels] = useState([]);
-  const [currentLevel, setCurrentLevel] = useState(1);
-  const [accessLevel, setAccessLevel] = useState(6);
-  const [interviews, setInterviews] = useState([]);
-  const [trends, setTrends] = useState([]);
-  const [readiness, setReadiness] = useState(null);
-  const [comparisons, setComparisons] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError("");
-      const results = await Promise.allSettled([
-        apiFetch("/api/mentorship/journey"),
-        apiFetch("/api/mentorship/levels"),
-        apiFetch("/api/mentorship/journey/interviews"),
-        apiFetch("/api/mentorship/progress/trends"),
-        apiFetch("/api/mentorship/progress/readiness"),
-        apiFetch("/api/mentorship/resume/comparisons"),
-      ]);
-
-      const get = (i, fallback) => results[i].status === "fulfilled" ? results[i].value : fallback;
-
-      setJourney(get(0, {}).journey || null);
-      setLevels(get(1, {}).levels || []);
-      setCurrentLevel(get(1, {}).current_level || 1);
-      const backendAccessLevel = get(1, {}).journey_access_level;
-      if (backendAccessLevel !== undefined && backendAccessLevel !== null) {
-        setAccessLevel(backendAccessLevel);
-      }
-      const rawInterviews = get(2, {}).interviews || [];
-      setInterviews(rawInterviews.map((iv) => ({
-        ...iv,
-        number: iv.interview_number ?? iv.number,
-        score: iv.overall_score ?? iv.score,
-        date: iv.completed_at ?? iv.date,
-      })));
-      const rawTrends = get(3, {}).trends || {};
-      const trendsArray = Array.isArray(rawTrends)
-        ? rawTrends
-        : (rawTrends.overall || []).map((t, i) => ({ score: t.value, date: t.date, session_id: i }));
-      setTrends(trendsArray);
-      setReadiness(get(4, {}).readiness || null);
-      setComparisons(get(5, {}).comparisons || []);
-    } catch (err) {
-      setError(err.message || "Failed to load journey data");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const { data: p, loading, error } = usePlacementProgress();
 
   if (loading) {
     return (
@@ -120,18 +65,29 @@ function PlacementJourneyInner() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-canvas">
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!p) return null;
+
+  const {
+    currentLevel, currentLevelName, placementReadiness, averageScore,
+    completedInterviews, progressPercentage, levels, recentInterviews,
+    trends, accessLevel, targetCareerGoal,
+  } = p;
+
   const maxTrendScore = Math.max(...trends.map((t) => t.score || 0), 1);
-  const completedInterviews = interviews.filter((i) => i.status === "completed");
 
   return (
     <div className="min-h-screen bg-canvas">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
-            {error}
-          </div>
-        )}
-
         {/* Hero */}
         <section className="mb-8 rounded-xl border border-slate-200 bg-white p-4 sm:p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -142,10 +98,10 @@ function PlacementJourneyInner() {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
-                    {journey?.target_career_goal || "Placement Journey"}
+                    {targetCareerGoal || "Placement Journey"}
                   </h1>
                   <p className="text-sm text-slate-500">
-                    Level {currentLevel} — {levelNames[currentLevel - 1] || "Getting Started"}
+                    Level {currentLevel} &mdash; {currentLevelName}
                   </p>
                 </div>
               </div>
@@ -154,18 +110,13 @@ function PlacementJourneyInner() {
                 <div className="mb-2 flex items-center justify-between text-sm">
                   <span className="font-medium text-slate-700">Level Progress</span>
                   <span className="text-slate-500">
-                    {completedInterviews.length} / {levels[currentLevel]?.unlock_after_interviews || "—"} interviews
+                    {completedInterviews} / {levels.find(l => l.id === currentLevel + 1)?.requiredInterviews ? levels.find(l => l.id === currentLevel + 1).requiredInterviews + (levels.find(l => l.id === currentLevel)?.requiredInterviews || 0) : "\u2014"} interviews
                   </span>
                 </div>
                 <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${levelColors[currentLevel - 1] || "bg-brand-500"}`}
-                    style={{ width: `${(() => {
-                      const done = completedInterviews.length;
-                      const cur = levels[currentLevel - 1]?.unlock_after_interviews || 0;
-                      const next = levels[currentLevel]?.unlock_after_interviews;
-                      return next != null ? Math.max(0, Math.min(100, ((done - cur) / (next - cur)) * 100)) : 100;
-                    })()}%` }}
+                    style={{ width: `${progressPercentage}%` }}
                   />
                 </div>
               </div>
@@ -173,16 +124,16 @@ function PlacementJourneyInner() {
               <div className="flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center gap-1.5 text-slate-600">
                   <Award className="h-4 w-4 text-amber-500" />
-                  <span className="font-medium">{completedInterviews.length}</span> interviews completed
+                  <span className="font-medium">{completedInterviews}</span> interviews completed
                 </div>
                 <div className="flex items-center gap-1.5 text-slate-600">
                   <TrendingUp className="h-4 w-4 text-emerald-500" />
-                  Readiness: <span className="font-medium">{readiness?.score || 0}%</span>
+                  Readiness: <span className="font-medium">{placementReadiness}%</span>
                 </div>
-                {journey?.target_career_goal && (
+                {targetCareerGoal && (
                   <div className="flex items-center gap-1.5 text-slate-600">
                     <Target className="h-4 w-4 text-brand-500" />
-                    Target: <span className="font-medium">{journey.target_career_goal}</span>
+                    Target: <span className="font-medium">{targetCareerGoal}</span>
                   </div>
                 )}
               </div>
@@ -190,11 +141,11 @@ function PlacementJourneyInner() {
 
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
               <div className="rounded-lg bg-brand-50 px-4 py-3 text-center">
-                <p className="text-2xl font-bold text-brand-700">{readiness?.score || 0}%</p>
+                <p className="text-2xl font-bold text-brand-700">{placementReadiness}%</p>
                 <p className="text-xs font-medium text-brand-600">Placement Ready</p>
               </div>
               <div className="rounded-lg bg-slate-50 px-4 py-3 text-center">
-                <p className="text-2xl font-bold text-slate-900">{journey?.overall_score || 0}</p>
+                <p className="text-2xl font-bold text-slate-900">{averageScore}</p>
                 <p className="text-xs font-medium text-slate-500">Overall Score</p>
               </div>
             </div>
@@ -247,71 +198,67 @@ function PlacementJourneyInner() {
         </section>
 
         {/* Level progression */}
-        {levels.length > 0 && (
-          <section className="mb-8 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Level Progression</h2>
-              <span className="text-xs text-slate-500">Access up to Level {accessLevel}</span>
-            </div>
-            <div className="flex flex-col gap-3">
-              {levels.map((lvl) => {
-                const isAccessible = lvl.accessible;
-                const isActiveLvl = isAccessible && lvl.level === currentLevel;
-                const isCompleted = isAccessible && lvl.level < currentLevel;
-                const isLocked = !isAccessible;
-                return (
-                  <div
-                    key={lvl.level}
-                    className={`flex items-center gap-4 rounded-lg border p-3 sm:p-4 transition ${
-                      isActiveLvl ? "border-brand-300 bg-brand-50"
-                        : isCompleted ? "border-emerald-200 bg-emerald-50"
-                        : isLocked ? "border-slate-100 bg-slate-50 opacity-50"
-                        : "border-slate-100 bg-slate-50 opacity-60"
-                    }`}
-                  >
-                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
-                      isLocked ? "bg-slate-300" : (levelColors[lvl.level - 1] || "bg-slate-400")
-                    }`}>
-                      {isLocked ? <Lock className="h-4 w-4" /> : lvl.level}
-                    </div>
-                    <div className="flex-1">
-                      <p className={`text-sm font-semibold ${isActiveLvl ? "text-brand-900" : isLocked ? "text-slate-400" : "text-slate-800"}`}>
-                        {lvl.name || `Level ${lvl.level}`}
-                      </p>
-                      <p className={`text-xs ${isLocked ? "text-slate-300" : "text-slate-500"}`}>
-                        {isLocked ? "Locked — complete previous levels to unlock" : `Unlocks after ${lvl.unlock_after_interviews || 0} interviews`}
-                      </p>
-                      {!isLocked && (lvl.features || lvl.unlocked_features)?.length > 0 && (
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          {(lvl.features || lvl.unlocked_features).map((feat) => (
-                            <span key={feat} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
-                              <Zap className="h-2.5 w-2.5" />{feat}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    {isCompleted && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
-                    {isActiveLvl && <span className="rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-semibold text-brand-700">Current</span>}
-                    {isLocked && <Lock className="h-4 w-4 text-slate-300" />}
+        <section className="mb-8 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-900">Level Progression</h2>
+            <span className="text-xs text-slate-500">Access up to Level {accessLevel}</span>
+          </div>
+          <div className="flex flex-col gap-3">
+            {levels.map((lvl) => {
+              const isActiveLvl = lvl.status === "current";
+              const isCompleted = lvl.status === "completed";
+              const isLocked = lvl.status === "locked";
+              return (
+                <div
+                  key={lvl.id}
+                  className={`flex items-center gap-4 rounded-lg border p-3 sm:p-4 transition ${
+                    isActiveLvl ? "border-brand-300 bg-brand-50"
+                      : isCompleted ? "border-emerald-200 bg-emerald-50"
+                      : "border-slate-100 bg-slate-50 opacity-50"
+                  }`}
+                >
+                  <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
+                    isLocked ? "bg-slate-300" : (levelColors[lvl.id - 1] || "bg-slate-400")
+                  }`}>
+                    {isLocked ? <Lock className="h-4 w-4" /> : lvl.id}
                   </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
+                  <div className="flex-1">
+                    <p className={`text-sm font-semibold ${isActiveLvl ? "text-brand-900" : isLocked ? "text-slate-400" : "text-slate-800"}`}>
+                      {lvl.name}
+                    </p>
+                    <p className={`text-xs ${isLocked ? "text-slate-300" : "text-slate-500"}`}>
+                      {lvl.completedInterviews} / {lvl.requiredInterviews} interviews completed
+                    </p>
+                    {lvl.features?.length > 0 && !isLocked && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {lvl.features.map((feat) => (
+                          <span key={feat} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                            <Zap className="h-2.5 w-2.5" />{feat}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {isCompleted && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
+                  {isActiveLvl && <span className="rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-semibold text-brand-700">Current</span>}
+                  {isLocked && <Lock className="h-4 w-4 text-slate-300" />}
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
         {/* Recent interviews */}
         <section className="mb-8">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900">Journey Interviews</h2>
-            {interviews.length > 5 && (
+            {recentInterviews.length > 5 && (
               <button onClick={() => navigate("/reports")} className="text-sm font-medium text-brand-600 hover:text-brand-700">
                 View all
               </button>
             )}
           </div>
-          {interviews.length === 0 ? (
+          {recentInterviews.length === 0 ? (
             <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
               <FileText className="mx-auto mb-3 h-10 w-10 text-slate-300" />
               <p className="font-medium text-slate-600">No interviews yet</p>
@@ -319,46 +266,43 @@ function PlacementJourneyInner() {
             </div>
           ) : (
             <div className="space-y-3">
-              {interviews.slice(0, 5).map((interview, idx) => (
+              {recentInterviews.slice(0, 5).map((iv, idx) => (
                 <div
-                  key={interview.session_id || idx}
+                  key={iv.id || idx}
                   className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-brand-200 hover:bg-brand-50/30"
                 >
                   <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
-                    (interview.score || 0) >= 80 ? "bg-emerald-500"
-                      : (interview.score || 0) >= 60 ? "bg-amber-400"
+                    (iv.score || 0) >= 80 ? "bg-emerald-500"
+                      : (iv.score || 0) >= 60 ? "bg-amber-400"
                       : "bg-rose-400"
                   }`}>
-                    {interview.number || idx + 1}
+                    {iv.interviewNumber || idx + 1}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold text-slate-900">
-                        Interview #{interview.number || idx + 1}
+                        Interview #{iv.interviewNumber || idx + 1}
                       </p>
-                      <span className={`inline-flex items-center gap-1 text-xs font-medium ${
-                        interview.status === "completed" ? "text-emerald-600" : "text-slate-400"
-                      }`}>
-                        {interview.status === "completed" && <CheckCircle2 className="h-3 w-3" />}
-                        {interview.status || "—"}
-                      </span>
+                      {iv.blueprintTitle && (
+                        <span className="text-xs text-slate-500">{iv.blueprintTitle}</span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-500">
-                      {interview.date ? formatDateTime(interview.date) : "—"}
-                      {interview.grade && <span className="ml-2">Grade: {interview.grade}</span>}
+                      {iv.completedAt ? formatDateTime(iv.completedAt) : "\u2014"}
+                      {iv.grade && <span className="ml-2">Grade: {iv.grade}</span>}
                     </p>
                   </div>
-                  {Number.isFinite(Number(interview.score)) && (
+                  {Number.isFinite(Number(iv.score)) && (
                     <span className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
-                      (interview.score || 0) >= 80 ? "bg-emerald-50 text-emerald-700"
-                        : (interview.score || 0) >= 60 ? "bg-amber-50 text-amber-700"
+                      (iv.score || 0) >= 80 ? "bg-emerald-50 text-emerald-700"
+                        : (iv.score || 0) >= 60 ? "bg-amber-50 text-amber-700"
                         : "bg-red-50 text-red-700"
                     }`}>
-                      {Math.round(Number(interview.score))}%
+                      {Math.round(Number(iv.score))}%
                     </span>
                   )}
                   <button
-                    onClick={() => navigate("/report", { state: { sessionId: interview.session_id } })}
+                    onClick={() => navigate("/report", { state: { sessionId: iv.sessionId } })}
                     className="flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
                   >
                     View <ChevronRight className="h-3.5 w-3.5" />
@@ -377,7 +321,7 @@ function PlacementJourneyInner() {
               {trends.slice(-5).map((trend, idx) => {
                 const height = Math.max(((trend.score || 0) / maxTrendScore) * 100, 8);
                 return (
-                  <div key={trend.session_id || idx} className="flex flex-1 flex-col items-center gap-2">
+                  <div key={trend.sessionId || idx} className="flex flex-1 flex-col items-center gap-2">
                     <span className="text-xs font-semibold text-slate-700">{trend.score || 0}</span>
                     <div className="w-full" style={{ height: `${height}%` }}>
                       <div
@@ -397,48 +341,8 @@ function PlacementJourneyInner() {
             </div>
             <div className="mt-4 flex items-center justify-center gap-6 text-xs text-slate-500">
               <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-400" /> Below 60</span>
-              <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400" /> 60–79</span>
+              <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400" /> 60&ndash;79</span>
               <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" /> 80+</span>
-            </div>
-          </section>
-        )}
-
-        {/* Resume versions */}
-        {comparisons.length > 0 && (
-          <section className="mb-8 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Resume Versions</h2>
-              <button
-                onClick={() => navigate("/resume-builder")}
-                className="flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700"
-              >
-                Open builder <ArrowRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {comparisons.map((comp, idx) => (
-                <div
-                  key={comp._id || idx}
-                  className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 transition hover:border-slate-200"
-                >
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-slate-200">
-                    <FileText className="h-5 w-5 text-slate-500" />
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <p className="truncate text-sm font-medium text-slate-800">
-                      {comp.name || `Version ${idx + 1}`}
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      {comp.uploaded_at ? new Date(comp.uploaded_at).toLocaleDateString() : ""}
-                    </p>
-                  </div>
-                  {comp.improvement !== undefined && (
-                    <span className={`text-xs font-semibold ${comp.improvement >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                      {comp.improvement >= 0 ? "+" : ""}{comp.improvement}%
-                    </span>
-                  )}
-                </div>
-              ))}
             </div>
           </section>
         )}
