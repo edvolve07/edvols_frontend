@@ -27,6 +27,7 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(initialPlan);
   const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [referralDiscount, setReferralDiscount] = useState(null);
   const [form, setForm] = useState({
     name: '',
@@ -61,6 +62,7 @@ export default function Signup() {
   async function handleAccountSubmit(e) {
     e.preventDefault();
     setError('');
+    setEmailError('');
     if (form.password !== form.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -76,13 +78,13 @@ export default function Signup() {
         body: JSON.stringify({ email: form.email }),
       });
       if (res.exists) {
-        setError('An account with this email already exists. Please use a different email or sign in.');
+        setEmailError('This email is already registered.');
         setLoading(false);
         return;
       }
       setStep('payment');
     } catch (err) {
-      setError(err.message || 'Failed to verify email. Please try again.');
+      setEmailError(err.message || 'Failed to verify email. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -214,7 +216,12 @@ export default function Signup() {
               </label>
               <label className="block md:col-span-2">
                 <span className="text-sm font-bold text-slate-700">Email</span>
-                <input type="email" required value={form.email} onChange={(e) => update('email', e.target.value)} className="mt-1.5 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" placeholder="you@example.com" />
+                <input type="email" required value={form.email} onChange={(e) => { update('email', e.target.value); setEmailError(''); }} className="mt-1.5 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" placeholder="you@example.com" />
+                {emailError && (
+                  <span className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-red-600">
+                    {emailError} <Link to="/login" className="font-bold text-emerald-700 underline hover:text-emerald-800">Sign in</Link>
+                  </span>
+                )}
               </label>
               <label className="block">
                 <span className="text-sm font-bold text-slate-700">Password</span>
