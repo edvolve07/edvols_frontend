@@ -69,7 +69,23 @@ export default function Signup() {
       setError('Please select a plan');
       return;
     }
-    setStep('payment');
+    setLoading(true);
+    try {
+      const res = await apiFetch('/subscription/check-email', {
+        method: 'POST',
+        body: JSON.stringify({ email: form.email }),
+      });
+      if (res.exists) {
+        setError('An account with this email already exists. Please use a different email or sign in.');
+        setLoading(false);
+        return;
+      }
+      setStep('payment');
+    } catch (err) {
+      setError(err.message || 'Failed to verify email. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handlePayment() {
@@ -231,8 +247,8 @@ export default function Signup() {
               </label>
             </div>
 
-            <button type="submit" className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-600 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition-all duration-200 hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-300 active:scale-[0.98]">
-              <UserPlus className="h-4 w-4" /> Continue to Payment
+            <button type="submit" disabled={loading} className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-600 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition-all duration-200 hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-300 active:scale-[0.98] disabled:opacity-60">
+              {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Checking...</> : <><UserPlus className="h-4 w-4" /> Continue to Payment</>}
             </button>
 
             <p className="mt-6 text-center text-sm text-slate-500">

@@ -12,6 +12,7 @@ import {
   X,
   Check,
   ArrowUpDown,
+  Trash2,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -38,6 +39,8 @@ export default function IndividualStudents() {
   const [error, setError] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [updatingSub, setUpdatingSub] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadStudents = useCallback(async () => {
     setLoading(true);
@@ -78,6 +81,21 @@ export default function IndividualStudents() {
       setError(err.message || "Failed to update subscription");
     } finally {
       setUpdatingSub(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await apiFetch(`/api/subscription/admin/individual-students/${deleteTarget.id}`, { method: "DELETE" });
+      setStudents((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+      setTotal((prev) => Math.max(0, prev - 1));
+      setDeleteTarget(null);
+    } catch (err) {
+      setError(err.message || "Failed to delete student");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -191,12 +209,21 @@ export default function IndividualStudents() {
                       {formatDate(s.created_at)}
                     </td>
                     <td className="px-6 py-4">
-                      <button
-                        onClick={() => setSelectedStudent(s)}
-                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                      >
-                        <CreditCard className="mr-1 inline h-3.5 w-3.5" /> Manage
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setSelectedStudent(s)}
+                          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                        >
+                          <CreditCard className="mr-1 inline h-3.5 w-3.5" /> Manage
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(s)}
+                          className="rounded-lg border border-slate-200 p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                          title="Delete student"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -291,6 +318,28 @@ export default function IndividualStudents() {
                   );
                 })}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm" onClick={() => setDeleteTarget(null)}>
+          <div className="w-full max-w-md rounded-2xl border border-slate-100 bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-slate-950">Delete Student</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Are you sure you want to delete <strong>{deleteTarget.name}</strong> ({deleteTarget.email})?
+              This will permanently remove their account, subscription, and all related data. This action cannot be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setDeleteTarget(null)}
+                className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
+                Cancel
+              </button>
+              <button onClick={handleDelete} disabled={deleting}
+                className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-60">
+                {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
             </div>
           </div>
         </div>
