@@ -48,7 +48,6 @@ export const NAV_ITEMS = [
   { href: "/reports", label: "Reports", icon: FileText, roles: ["student", "individual_student"], modules: ["both", "aptitude", "ai_interview"] },
   { href: "/resume-builder", label: "Resume Builder", icon: FilePlus2, roles: ["student", "individual_student"] },
   { href: "/subscription", label: "Subscription & Billing", icon: CreditCard, roles: ["individual_student"] },
-  { href: "/referral", label: "Referral Program", icon: Gift, roles: ["individual_student"] },
   { href: "/admin/dashboard", label: "Admin Dashboard", icon: ShieldCheck, roles: ["admin"] },
   { href: "/admin/analytics/aptitude", label: "Aptitude Analytics", icon: BrainCircuit, roles: ["admin"], modules: ["both", "aptitude"] },
   { href: "/admin/analytics/interviews", label: "Interview Analytics", icon: Mic2, roles: ["admin"], modules: ["both", "ai_interview"] },
