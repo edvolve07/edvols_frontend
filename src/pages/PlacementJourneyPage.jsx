@@ -164,7 +164,7 @@ function PlacementJourneyInner() {
                       const done = completedInterviews.length;
                       const cur = levels[currentLevel - 1]?.unlock_after_interviews || 0;
                       const next = levels[currentLevel]?.unlock_after_interviews;
-                      return next != null ? Math.min(100, ((done - cur) / (next - cur)) * 100) : 100;
+                      return next != null ? Math.max(0, Math.min(100, ((done - cur) / (next - cur)) * 100)) : 100;
                     })()}%` }}
                   />
                 </div>

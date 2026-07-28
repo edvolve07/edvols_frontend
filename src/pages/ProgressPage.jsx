@@ -282,7 +282,7 @@ function ProgressPageInner() {
   const currentThreshold = levels[currentLevel - 1]?.unlock_after_interviews || 0;
   const nextThreshold = levels[currentLevel]?.unlock_after_interviews;
   const levelProgress = nextThreshold != null
-    ? Math.min(100, Math.round(((totalInterviewsDone - currentThreshold) / (nextThreshold - currentThreshold)) * 100))
+    ? Math.max(0, Math.min(100, Math.round(((totalInterviewsDone - currentThreshold) / (nextThreshold - currentThreshold)) * 100)))
     : 100;
   const maxTrendScore = Math.max(...trends.map((t) => t.score || 0), 1);
 
