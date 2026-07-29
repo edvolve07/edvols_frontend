@@ -125,7 +125,7 @@ export default function Signup() {
         order_id: orderData.order_id,
         name: 'Edvols',
         description: `${plan.name} Plan Subscription`,
-        prefill: { name: form.name, email: form.email },
+        prefill: { name: form.name },
         theme: { color: '#059669' },
       });
 
