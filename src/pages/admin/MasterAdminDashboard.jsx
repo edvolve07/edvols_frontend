@@ -5,6 +5,7 @@ import {
   Cpu,
   Loader2,
   Users,
+  BarChart3,
 } from "lucide-react";
 import { Link } from "@/src/navigation";
 import { apiFetch } from "@/lib/api";
@@ -130,6 +131,19 @@ export default function MasterAdminDashboard() {
           <p className="mt-2 text-sm leading-6 text-slate-500">Review AI calls by feature and provider, then update API keys from one protected page.</p>
           <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-emerald-600">
             Open AI usage <ArrowRight size={15} />
+          </span>
+        </Link>
+        <Link
+          href="/master-admin/institution-analytics"
+          className="rounded-2xl border border-slate-100 bg-white p-4 shadow-card transition hover:-translate-y-0.5 hover:shadow-card-hover sm:p-5"
+        >
+          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+            <BarChart3 size={19} />
+          </div>
+          <h2 className="font-display text-lg font-semibold text-slate-950 sm:text-xl">Institution Analytics</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-500">Performance, revenue and student insights by college — exportable as PDF.</p>
+          <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-emerald-600">
+            Open analytics <ArrowRight size={15} />
           </span>
         </Link>
       </section>

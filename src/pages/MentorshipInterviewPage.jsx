@@ -337,12 +337,13 @@ export default function MentorshipInterviewPage() {
 
       try {
         const sessionRes = await apiFetch(`/api/session/${sessionId}`);
-        if (sessionRes?.current_question) {
+        const firstQuestion = sessionRes?.question ?? sessionRes?.current_question;
+        if (firstQuestion) {
           setQuestionData({
             sessionId,
-            firstQuestion: sessionRes.current_question,
-            questionNumber: sessionRes.question_count || 1,
-            totalQuestions: 10,
+            firstQuestion,
+            questionNumber: sessionRes.question_number || sessionRes.question_count || 1,
+            totalQuestions: sessionRes.max_questions ?? 10,
             atsScore: sessionRes.ats_analysis?.ats_score,
             skillsFound: (sessionRes.ats_analysis?.skills_found || []).slice(0, 5),
           });

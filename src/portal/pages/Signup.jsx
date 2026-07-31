@@ -34,6 +34,9 @@ export default function Signup() {
     email: '',
     password: '',
     confirmPassword: '',
+    college_name: '',
+    college_address: '',
+    course_details: '',
     referral_code: searchParams.get('ref') || '',
   });
 
@@ -110,6 +113,9 @@ export default function Signup() {
             name: form.name,
             email: form.email,
             password: form.password,
+            college_name: form.college_name || undefined,
+            college_address: form.college_address || undefined,
+            course_details: form.course_details || undefined,
             referral_code: form.referral_code || undefined,
           }),
         });
@@ -145,6 +151,9 @@ export default function Signup() {
           name: form.name,
           email: form.email,
           password: form.password,
+          college_name: form.college_name || undefined,
+          college_address: form.college_address || undefined,
+          course_details: form.course_details || undefined,
           referral_code: form.referral_code || undefined,
         }),
       });
@@ -235,6 +244,18 @@ export default function Signup() {
                 <div className="relative mt-1.5">
                   <input type="password" minLength="8" required value={form.confirmPassword} onChange={(e) => update('confirmPassword', e.target.value)} className="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-12 text-sm text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" placeholder="Repeat your password" />
                 </div>
+              </label>
+              <label className="block md:col-span-2">
+                <span className="text-sm font-bold text-slate-700">College / Institution Name <span className="font-normal text-slate-400">(optional)</span></span>
+                <input type="text" value={form.college_name} onChange={(e) => update('college_name', e.target.value)} className="mt-1.5 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" placeholder="e.g., ABC Institute of Technology" />
+              </label>
+              <label className="block md:col-span-2">
+                <span className="text-sm font-bold text-slate-700">College Address <span className="font-normal text-slate-400">(optional)</span></span>
+                <input type="text" value={form.college_address} onChange={(e) => update('college_address', e.target.value)} className="mt-1.5 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" placeholder="City, State, Pin code" />
+              </label>
+              <label className="block md:col-span-2">
+                <span className="text-sm font-bold text-slate-700">Course Details <span className="font-normal text-slate-400">(e.g., BCA 3rd Year, B.Tech CSE, B.Com)</span></span>
+                <input type="text" value={form.course_details} onChange={(e) => update('course_details', e.target.value)} className="mt-1.5 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" placeholder="What course are you pursuing?" />
               </label>
               <label className="block md:col-span-2">
                 <span className="text-sm font-bold text-slate-700">Referral Code <span className="font-normal text-slate-400">(optional)</span></span>

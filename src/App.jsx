@@ -19,6 +19,7 @@ import CreateAdmin from "@/src/pages/admin/CreateAdmin";
 import CreateUser from "@/src/pages/admin/CreateUser";
 import InstitutionsPage from "@/src/pages/admin/Institutions";
 import InstitutionDetailPage from "@/src/pages/admin/InstitutionDetail";
+import InstitutionAnalytics from "@/src/pages/admin/InstitutionAnalytics";
 import MasterAdminDashboard from "@/src/pages/admin/MasterAdminDashboard";
 import MasterAdminsList from "@/src/pages/admin/MasterAdminsList";
 import EdvolsAdminDashboard from "@/src/pages/admin/EdvolsAdminDashboard";
@@ -84,11 +85,15 @@ function AppShell({ children }) {
   const pathname = useLocation().pathname;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
-    if (window.innerWidth < 1024) return 288;
+    if (window.innerWidth < 1024) return 256;
     const stored = Number(window.localStorage.getItem("app-sidebar-width"));
-    return Number.isFinite(stored) ? Math.min(Math.max(stored, 88), 360) : 288;
+    return Number.isFinite(stored) ? Math.min(Math.max(stored, 88), 320) : 256;
   });
   const [streak, setStreak] = useState(0);
+  const isInterviewPage = pathname === "/interview";
+  const isAdminRoute = pathname.startsWith("/admin") || pathname.startsWith("/master-admin");
+  const isProgrammingRoute = pathname === "/programming" || pathname.startsWith("/programming/");
+  const showSearch = isAdminRoute || isProgrammingRoute;
 
   useEffect(() => {
     if (window.innerWidth >= 1024) {
@@ -122,50 +127,73 @@ function AppShell({ children }) {
         onWidthChange={setSidebarWidth}
       />
       <div className="flex min-h-screen min-w-0 flex-1 flex-col lg:pl-[var(--app-sidebar-width)]">
-        <header className="sticky top-0 z-30 flex h-[76px] items-center gap-3 border-b border-slate-200 bg-white/85 px-4 backdrop-blur-xl sm:px-6 lg:px-10">
-          <button
-            type="button"
-            aria-label="Open sidebar"
-            onClick={() => setSidebarOpen(true)}
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 lg:hidden"
-          >
-            <Menu size={20} />
-          </button>
-
-          <div className="hidden flex-1 justify-center md:flex">
-            <label className="flex h-12 w-full max-w-[520px] items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-slate-500">
-              <Search size={19} className="text-slate-400" />
-              <input
-                type="search"
-                placeholder="Search topics, questions, or tests..."
-                className="h-full min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
-              />
-            </label>
-          </div>
-
-          <div className="min-w-0 flex-1 md:hidden">
-            <p className="text-base font-bold leading-none text-slate-900">{APP_NAME}</p>
-            <p className="mt-0.5 text-[11px] font-medium text-slate-500">Unified prep workspace</p>
-          </div>
-
-          {user?.role !== "admin" && user?.role !== "master_admin" ? (
-            <button className="hidden h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 sm:inline-flex">
-              <Flame size={17} className="text-amber-500" />
-              {streak}
+        {isAdminRoute || isProgrammingRoute ? (
+          <header className="sticky top-0 z-30 flex h-[76px] items-center gap-3 border-b border-slate-200 bg-white/85 px-4 backdrop-blur-xl sm:px-6 lg:px-10">
+            <button
+              type="button"
+              aria-label="Open sidebar"
+              onClick={() => setSidebarOpen(true)}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 lg:hidden"
+            >
+              <Menu size={20} />
             </button>
-          ) : null}
 
-          <button
-            type="button"
-            onClick={() => navigate("/profile")}
-            className="inline-flex shrink-0 items-center gap-3 rounded-xl px-1 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:px-2"
-          >
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-800 text-sm font-bold text-white">
-              {(user?.name || "U").slice(0, 1).toUpperCase()}
-            </span>
-            <span className="hidden max-w-36 truncate sm:inline">{user?.name || "User"}</span>
-          </button>
-        </header>
+            {showSearch && (
+              <div className="hidden flex-1 justify-center md:flex">
+                <label className="flex h-12 w-full max-w-[520px] items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-slate-500">
+                  <Search size={19} className="text-slate-400" />
+                  <input
+                    type="search"
+                    placeholder="Search topics, questions, or tests..."
+                    className="h-full min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+                  />
+                </label>
+              </div>
+            )}
+
+            <div className="min-w-0 flex-1 md:hidden">
+              <p className="text-base font-bold leading-none text-slate-900">{APP_NAME}</p>
+              <p className="mt-0.5 text-[11px] font-medium text-slate-500">Unified prep workspace</p>
+            </div>
+
+            {user?.role !== "admin" && user?.role !== "master_admin" ? (
+              <button className="ml-auto hidden h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 sm:inline-flex">
+                <Flame size={17} className="text-amber-500" />
+                {streak}
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => navigate("/profile")}
+              className="inline-flex shrink-0 items-center gap-3 rounded-xl px-1 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:px-2"
+            >
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-800 text-sm font-bold text-white">
+                {(user?.name || "U").slice(0, 1).toUpperCase()}
+              </span>
+              <span className="hidden max-w-36 truncate sm:inline">{user?.name || "User"}</span>
+            </button>
+          </header>
+        ) : !isInterviewPage ? (
+          <div className="sticky top-0 z-30 flex h-14 items-center justify-end gap-2 px-4 sm:px-6 lg:px-10">
+            {user?.role !== "admin" && user?.role !== "master_admin" ? (
+              <button className="hidden h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 sm:inline-flex">
+                <Flame size={17} className="text-amber-500" />
+                {streak}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => navigate("/profile")}
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-white px-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 sm:px-3"
+            >
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-800 text-xs font-bold text-white">
+                {(user?.name || "U").slice(0, 1).toUpperCase()}
+              </span>
+              <span className="hidden max-w-32 truncate sm:inline">{user?.name || "User"}</span>
+            </button>
+          </div>
+        ) : null}
 
         <main className="min-h-screen min-w-0 flex-1 overflow-x-hidden">
           <PageTransition>
@@ -282,6 +310,7 @@ export default function App() {
         <Route path="/master-admin/master-admins" element={<AppShell><MasterAdminsList /></AppShell>} />
         <Route path="/master-admin/institutions" element={<AppShell><InstitutionsPage /></AppShell>} />
         <Route path="/master-admin/institutions/:id" element={<AppShell><InstitutionDetailPage /></AppShell>} />
+        <Route path="/master-admin/institution-analytics" element={<AppShell><InstitutionAnalytics /></AppShell>} />
         <Route path="/master-admin/create-admin" element={<AppShell><CreateAdmin /></AppShell>} />
         <Route path="/master-admin/create-user" element={<AppShell><CreateUser /></AppShell>} />
         <Route path="/master-admin/individual-students" element={<AppShell><IndividualStudents /></AppShell>} />

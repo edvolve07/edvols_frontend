@@ -81,11 +81,17 @@ export const DASHBOARD_STATS = [
 
 export const INTERVIEW_DOMAINS = [
   "Engineering",
-  "Computer Science",
-  "Business",
-  "Finance",
-  "Marketing",
-  "Healthcare",
+  "BCA",
+  "B.Sc",
+  "BBA",
+  "B.Com",
+  "BA",
+  "MBA",
+  "MCA",
+  "MCA / M.Sc IT",
+  "Commerce",
+  "Arts / Humanities",
+  "Other",
 ];
 
 export const INTERVIEW_ROLES = [
@@ -101,42 +107,90 @@ export const INTERVIEW_ROLES = [
 
 export const DOMAIN_ROLES = {
   Engineering: [
-    "Mechanical Engineer",
-    "Civil Engineer",
-    "Electrical Engineer",
-    "Industrial Engineer",
-  ],
-  "Computer Science": [
     "Software Engineer",
     "Frontend Developer",
     "Backend Developer",
     "Full Stack Developer",
     "Data Scientist",
     "DevOps Engineer",
+    "Mechanical Engineer",
+    "Electrical Engineer",
+    "Civil Engineer",
   ],
-  Business: [
+  BCA: [
+    "Software Developer",
+    "Web Developer",
+    "App Developer",
+    "Data Analyst",
+    "System Administrator",
+  ],
+  "B.Sc": [
+    "Data Analyst",
+    "Software Developer",
+    "Research Assistant",
+    "Lab Analyst",
+    "Scientific Officer",
+  ],
+  BBA: [
+    "Business Analyst",
+    "Marketing Executive",
+    "HR Executive",
+    "Operations Executive",
+    "Management Trainee",
+  ],
+  "B.Com": [
+    "Accountant",
+    "Financial Analyst",
+    "Auditor",
+    "Tax Consultant",
+    "Bank PO",
+  ],
+  BA: [
+    "Content Writer",
+    "HR Executive",
+    "Public Relations Executive",
+    "Teacher",
+    "Communication Specialist",
+  ],
+  MBA: [
     "Product Manager",
     "Business Analyst",
     "Management Consultant",
-    "Operations Manager",
-  ],
-  Finance: [
-    "Financial Analyst",
-    "Investment Banker",
-    "Accountant",
-    "Auditor",
-  ],
-  Marketing: [
     "Marketing Manager",
-    "Digital Marketing Specialist",
-    "Brand Manager",
-    "Content Strategist",
+    "HR Manager",
   ],
-  Healthcare: [
-    "Doctor",
-    "Nurse",
-    "Healthcare Administrator",
-    "Medical Researcher",
+  MCA: [
+    "Software Engineer",
+    "Full Stack Developer",
+    "System Architect",
+    "Database Administrator",
+  ],
+  "MCA / M.Sc IT": [
+    "Software Engineer",
+    "Full Stack Developer",
+    "Data Analyst",
+    "Cloud Engineer",
+  ],
+  Commerce: [
+    "Accountant",
+    "Financial Analyst",
+    "Tax Consultant",
+    "Trade Analyst",
+  ],
+  "Arts / Humanities": [
+    "Content Writer",
+    "HR Executive",
+    "Teacher",
+    "Communication Specialist",
+    "Journalist",
+  ],
+  Other: [
+    "Software Engineer",
+    "Data Analyst",
+    "Business Analyst",
+    "Marketing Executive",
+    "Sales Executive",
+    "HR Executive",
   ],
 };
 

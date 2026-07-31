@@ -3,38 +3,25 @@ import {
   Loader2,
   Search,
   CreditCard,
-  Crown,
-  Mail,
-  Calendar,
   TrendingUp,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   X,
   Check,
-  ArrowUpDown,
   Trash2,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
-const PLANS = [
-  { key: "basic", name: "Basic", price: 499, total: 499, interviews: 4, access_level: 1 },
-  { key: "advanced", name: "Advanced", price: 1199, total: 1199, interviews: 12, access_level: 3 },
-  { key: "professional", name: "Professional", price: 1999, total: 1999, interviews: 24, access_level: 6 },
-];
-
-function formatDate(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(d);
-}
-
 export default function IndividualStudents() {
   const [students, setStudents] = useState([]);
+  const [plans, setPlans] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
+  const [college, setCollege] = useState("");
+  const [colleges, setColleges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -48,18 +35,26 @@ export default function IndividualStudents() {
     try {
       const params = new URLSearchParams({ page, limit: 20 });
       if (search) params.set("search", search);
+      if (college) params.set("college", college);
       const data = await apiFetch(`/api/subscription/admin/individual-students?${params}`);
       setStudents(data.students || []);
       setTotal(data.total || 0);
       setTotalPages(data.total_pages || 1);
+      if (data.colleges) setColleges(data.colleges);
     } catch (err) {
       setError(err.message || "Failed to load students");
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, search, college]);
 
   useEffect(() => { loadStudents(); }, [loadStudents]);
+
+  useEffect(() => {
+    apiFetch("/api/subscription/plans")
+      .then((data) => setPlans(data.plans || []))
+      .catch(() => setPlans([]));
+  }, []);
 
   async function handleSearch(e) {
     e.preventDefault();
@@ -113,16 +108,29 @@ export default function IndividualStudents() {
       )}
 
       <section className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
-        <form onSubmit={handleSearch} className="flex gap-3">
-          <div className="relative flex-1">
+        <form onSubmit={handleSearch} className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[260px] flex-1">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name or email..."
+              placeholder="Search name, email, college, course, plan or level..."
               className="w-full rounded-lg border border-slate-200 py-2.5 pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />
+          </div>
+          <div className="relative">
+            <select
+              value={college}
+              onChange={(e) => { setCollege(e.target.value); setPage(1); }}
+              className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-4 pr-9 text-sm text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            >
+              <option value="">All colleges</option>
+              {colleges.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
           </div>
           <button type="submit" className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700">
             Search
@@ -146,12 +154,12 @@ export default function IndividualStudents() {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50">
                 <tr>
-                  <th className="px-6 py-3 font-semibold text-slate-600">Student</th>
-                  <th className="px-6 py-3 font-semibold text-slate-600">Subscription</th>
+                  <th className="px-6 py-3 font-semibold text-slate-600">Name</th>
+                  <th className="px-6 py-3 font-semibold text-slate-600">College</th>
+                  <th className="px-6 py-3 font-semibold text-slate-600">Course</th>
                   <th className="px-6 py-3 font-semibold text-slate-600">Plan</th>
                   <th className="px-6 py-3 font-semibold text-slate-600">Amount Paid</th>
                   <th className="px-6 py-3 font-semibold text-slate-600">Journey Level</th>
-                  <th className="px-6 py-3 font-semibold text-slate-600">Registered</th>
                   <th className="px-6 py-3 font-semibold text-slate-600">Actions</th>
                 </tr>
               </thead>
@@ -170,13 +178,13 @@ export default function IndividualStudents() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        s.subscription?.status === "active" ? "bg-emerald-50 text-emerald-700" :
-                        s.subscription?.status === "upgraded" ? "bg-amber-50 text-amber-700" :
-                        "bg-slate-100 text-slate-500"
-                      }`}>
-                        {s.subscription?.status || "No subscription"}
-                      </span>
+                      <p className="font-semibold text-slate-900">{s.college_name || "—"}</p>
+                      {s.college_address && (
+                        <p className="text-xs text-slate-500">{s.college_address}</p>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="font-medium text-slate-900">{s.course_details || s.stream || "—"}</p>
                     </td>
                     <td className="px-6 py-4">
                       {s.subscription ? (
@@ -204,9 +212,6 @@ export default function IndividualStudents() {
                       ) : (
                         <span className="text-slate-400">—</span>
                       )}
-                    </td>
-                    <td className="px-6 py-4 text-xs text-slate-500">
-                      {formatDate(s.created_at)}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
@@ -291,32 +296,36 @@ export default function IndividualStudents() {
               <p className="text-sm font-semibold text-slate-700">Assign / Upgrade Plan</p>
               <p className="text-xs text-slate-500">This will directly assign journey access without payment.</p>
               <div className="mt-3 space-y-2">
-                {PLANS.map((plan) => {
-                  const isCurrent = selectedStudent.subscription?.plan_key === plan.key && selectedStudent.subscription?.status === "active";
-                  const isHigher = plan.access_level > (selectedStudent.subscription?.access_level || 0);
-                  return (
-                    <button
-                      key={plan.key}
-                      onClick={() => handleUpdateSubscription(selectedStudent.id, plan.key)}
-                      disabled={isCurrent || updatingSub}
-                      className={`w-full rounded-lg border-2 p-3 text-left transition disabled:opacity-40 ${
-                        isCurrent ? "border-emerald-400 bg-emerald-50" : "border-slate-200 hover:border-emerald-300"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-bold text-slate-900">{plan.name}</p>
-                          <p className="text-xs text-slate-500">Level {plan.access_level} · {plan.interviews} interviews · ₹{plan.total}</p>
+                {plans.length === 0 ? (
+                  <p className="rounded-lg border border-slate-200 bg-white p-3 text-center text-xs text-slate-500">No plans available.</p>
+                ) : (
+                  plans.map((plan) => {
+                    const isCurrent = selectedStudent.subscription?.plan_key === plan.key && selectedStudent.subscription?.status === "active";
+                    const isHigher = plan.access_level > (selectedStudent.subscription?.access_level || 0);
+                    return (
+                      <button
+                        key={plan.key}
+                        onClick={() => handleUpdateSubscription(selectedStudent.id, plan.key)}
+                        disabled={isCurrent || updatingSub}
+                        className={`w-full rounded-lg border-2 p-3 text-left transition disabled:opacity-40 ${
+                          isCurrent ? "border-emerald-400 bg-emerald-50" : "border-slate-200 hover:border-emerald-300"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">{plan.name}</p>
+                            <p className="text-xs text-slate-500">Level {plan.access_level} · {plan.interviews_total} interviews · ₹{plan.total_amount ?? plan.amount}</p>
+                          </div>
+                          {isCurrent ? (
+                            <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-700">CURRENT</span>
+                          ) : (
+                            <Check size={16} className="text-emerald-500" />
+                          )}
                         </div>
-                        {isCurrent ? (
-                          <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-700">CURRENT</span>
-                        ) : (
-                          <Check size={16} className="text-emerald-500" />
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
+                      </button>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>

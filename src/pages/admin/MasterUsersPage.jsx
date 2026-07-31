@@ -279,12 +279,12 @@ export default function MasterUsersPage() {
           <p className="mt-1 text-sm text-slate-500">Newest accounts and their assigned roles.</p>
         </div>
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px] text-left text-sm">
+          <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3">User</th>
-                <th className="px-4 py-3">Phone</th>
-                <th className="px-4 py-3">Organization</th>
+                <th className="px-4 py-3">College</th>
+                <th className="px-4 py-3">Course</th>
                 <th className="px-4 py-3">Modules</th>
                 <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">Assigned Admin</th>
@@ -299,8 +299,19 @@ export default function MasterUsersPage() {
                       <p className="font-semibold text-slate-950">{user.name}</p>
                       <p className="text-xs text-slate-500">{user.email}</p>
                     </td>
-                    <td className="px-4 py-3 text-xs">{user.phone || "—"}</td>
-                    <td className="px-4 py-3 text-xs">{user.organization || "—"}</td>
+                    <td className="px-4 py-3 text-xs">
+                      {user.college_name ? (
+                        <>
+                          <p className="font-medium text-slate-700">{user.college_name}</p>
+                          <p className="text-slate-500">{user.college_address}</p>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      {user.course_details || user.stream || "—"}
+                    </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex gap-1">
                         {(user.modules_access || []).map((m) => (
@@ -331,9 +342,9 @@ export default function MasterUsersPage() {
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-8 text-center text-slate-500" colSpan="7">
-                    No users found.
-                  </td>
+                    <td className="px-4 py-8 text-center text-slate-500" colSpan="7">
+                      No users found.
+                    </td>
                 </tr>
               )}
             </tbody>

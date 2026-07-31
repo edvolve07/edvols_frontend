@@ -557,3 +557,49 @@ html[data-assessment-fullscreen] .sidebar ~ * {
 .lk-session .fade-bottom {
   background: linear-gradient(to top, var(--canvas-bg), transparent);
 }
+
+/* ── Global card look ──
+   Give every box-like container consistent soft rounded corners and a subtle
+   shadow. Interactive elements (buttons, links, inputs, chips/pills) are left
+   untouched, and boxes that already define a shadow keep their own. */
+:where(section, article, aside, div):not(.sidebar):not([class*="sidebar"]):not(button):not(a):not(label):not(input):not(select):not(textarea):not([class*="rounded-full"]):is([class*="rounded-lg"], [class*="rounded-xl"], [class*="rounded-2xl"], [class*="rounded-3xl"]):not([class~="shadow-lg"]):not([class~="shadow-md"]):not([class~="shadow-xl"]):not([class~="shadow-2xl"]):not([class~="shadow-3xl"]):not([class~="shadow-inner"]):not([class~="shadow-none"]):not([class~="shadow-card-hover"]):not([class~="shadow-card-elevated"]):not([class~="shadow-elevated"]):not([class*="shadow-["]) {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+
+:where(section, article, aside, div):not(.sidebar):not([class*="sidebar"]):not(button):not(a):not(label):not(input):not(select):not(textarea):not([class*="rounded"])[class*="border"] {
+  border-radius: 1rem;
+}
+
+
+/* ── Print / PDF export ── */
+@media print {
+  aside,
+  header.sticky {
+    display: none !important;
+  }
+  div[style*="--app-sidebar-width"] {
+    padding-left: 0 !important;
+  }
+  main {
+    overflow: visible !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  #analytics-print {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  #analytics-print table {
+    border-collapse: collapse !important;
+    font-size: 11px !important;
+  }
+  #analytics-print th,
+  #analytics-print td {
+    border: 1px solid #e2e8f0 !important;
+  }
+}

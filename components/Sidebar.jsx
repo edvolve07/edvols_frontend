@@ -9,8 +9,8 @@ import gsap from "gsap";
 import { useReducedMotion } from "@/src/animations";
 
 const MIN_SIDEBAR_WIDTH = 88;
-const DEFAULT_SIDEBAR_WIDTH = 288;
-const MAX_SIDEBAR_WIDTH = 360;
+const DEFAULT_SIDEBAR_WIDTH = 256;
+const MAX_SIDEBAR_WIDTH = 320;
 const COMPACT_THRESHOLD = 136;
 
 function clampSidebarWidth(value) {
@@ -21,7 +21,6 @@ export default function Sidebar({ open = false, onClose = () => {}, width = DEFA
   const path = usePathname();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const resizingRef = useRef(false);
   const compact = width <= COMPACT_THRESHOLD && window.innerWidth >= 1024;
   const userModules = user?.modules_access || ["both"];
   const visibleItems = NAV_ITEMS.filter((item) => {
@@ -62,41 +61,8 @@ export default function Sidebar({ open = false, onClose = () => {}, width = DEFA
     onWidthChange(clampSidebarWidth(nextWidth));
   }
 
-  function handleResizeStart(event) {
-    if (window.innerWidth < 1024) return;
-    resizingRef.current = true;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    event.preventDefault();
-  }
-
-  function handleResizeMove(event) {
-    if (!resizingRef.current) return;
-    updateWidth(event.clientX);
-  }
-
-  function handleResizeEnd(event) {
-    if (!resizingRef.current) return;
-    resizingRef.current = false;
-    event.currentTarget.releasePointerCapture(event.pointerId);
-  }
-
   function toggleCompact() {
     updateWidth(compact ? DEFAULT_SIDEBAR_WIDTH : MIN_SIDEBAR_WIDTH);
-  }
-
-  function handleResizeKeyDown(event) {
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      updateWidth(width - 16);
-    }
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      updateWidth(width + 16);
-    }
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      toggleCompact();
-    }
   }
 
   return (
@@ -172,24 +138,6 @@ export default function Sidebar({ open = false, onClose = () => {}, width = DEFA
           {compact ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
           <span className={clsx(compact && "hidden")}>{compact ? "Expand" : "Shrink"}</span>
         </button>
-      </div>
-
-      <div
-        role="separator"
-        aria-label="Resize sidebar"
-        aria-orientation="vertical"
-        aria-valuemin={MIN_SIDEBAR_WIDTH}
-        aria-valuemax={MAX_SIDEBAR_WIDTH}
-        aria-valuenow={width}
-        tabIndex={0}
-        onPointerDown={handleResizeStart}
-        onPointerMove={handleResizeMove}
-        onPointerUp={handleResizeEnd}
-        onPointerCancel={handleResizeEnd}
-        onKeyDown={handleResizeKeyDown}
-        className="group absolute inset-y-0 right-0 hidden w-3 cursor-col-resize touch-none items-center justify-center outline-none lg:flex"
-      >
-        <span className="h-14 w-1 rounded-full bg-white/10 transition group-hover:bg-white/30 group-focus:bg-white/40" />
       </div>
     </aside>
   );

@@ -128,6 +128,94 @@ function InterviewGapSetting({ institutionId, currentGapDays, onUpdate }) {
   );
 }
 
+const PLAN_PRICE_DEFAULTS = [
+  { key: "basic_price", label: "Basic" },
+  { key: "advanced_price", label: "Advanced" },
+  { key: "professional_price", label: "Professional" },
+];
+
+function PricingSetting({ institutionId, pricing, defaults, onUpdate }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [values, setValues] = useState(pricing || {});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { setValues(pricing || {}); }, [pricing]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await apiFetch(`/api/institutions/${institutionId}`, {
+        method: "PATCH",
+        body: JSON.stringify(values),
+      });
+      onUpdate(values);
+      setIsEditing(false);
+    } catch (err) {
+      alert(err.message || "Failed to update pricing.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold text-slate-700">Negotiated Plan Pricing</p>
+          <p className="text-xs text-slate-500">Per-student price charged to this college. Leave blank to use the default.</p>
+        </div>
+        <button
+          onClick={() => setIsEditing((v) => !v)}
+          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+        >
+          <Pencil size={13} className="inline mr-1" />
+          {isEditing ? "Cancel" : "Edit"}
+        </button>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-600">
+        {PLAN_PRICE_DEFAULTS.map(({ key, label }) => (
+          <span key={key}>
+            {label}:{" "}
+            <b className="text-slate-800">
+              {pricing?.[key] != null ? `₹${pricing[key]}` : `₹${defaults?.[key] ?? "—"} (default)`}
+            </b>
+          </span>
+        ))}
+      </div>
+      {isEditing && (
+        <div className="mt-3 space-y-2">
+          {PLAN_PRICE_DEFAULTS.map(({ key, label }) => (
+            <label key={key} className="flex items-center gap-2 text-xs text-slate-600">
+              <span className="w-24 font-medium text-slate-700">{label}</span>
+              <input
+                type="number"
+                min={0}
+                placeholder={`Default ₹${defaults?.[key] ?? ""}`}
+                value={values[key] ?? ""}
+                onChange={(e) =>
+                  setValues((prev) => ({
+                    ...prev,
+                    [key]: e.target.value === "" ? null : Math.max(0, parseInt(e.target.value) || 0),
+                  }))
+                }
+                className="w-28 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm font-medium text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+              <span className="text-slate-400">blank = default ₹{defaults?.[key] ?? ""}</span>
+            </label>
+          ))}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Modal({ open, onClose, title, children }) {
   if (!open) return null;
   return (
@@ -683,16 +771,21 @@ function StudentEditModal({ open, onClose, student, departments, onSaved }) {
   );
 }
 
-const JOURNEY_LEVELS = [
-  { level: 1, name: "Level 1 — Foundation", interviews: 4, description: "Resume, Portfolio, Communication, Profile" },
-  { level: 2, name: "Level 2 — Professional", interviews: 8, description: "Technical Interview, HR, Behavioral, Mock" },
-  { level: 3, name: "Level 3 — Advanced", interviews: 12, description: "System Design, Leadership, Case Study" },
-  { level: 4, name: "Level 4 — Expert", interviews: 18, description: "Industry-Specific, Executive Presence" },
-  { level: 5, name: "Level 5 — Mentor", interviews: 22, description: "Mentoring, Peer Review, Teaching" },
-  { level: 6, name: "Level 6 — Placement Master", interviews: 24, description: "Final Assessment, Job Readiness" },
-];
-
-function JourneyAccessAssignModal({ open, onClose, institutionId, departments, students, onAssigned }) {
+function JourneyAccessAssignModal({ open, onClose, institutionId, departments, students, onAssigned, levels, paidPlans }) {
+  const displayLevels = (levels || []).map((l) => ({
+    level: l.level_access,
+    name: `Level ${l.level_access} — ${l.name}`,
+    interviews: l.interviews_total,
+    description: (l.features || []).join(", "),
+  }));
+  const displayPlans = (paidPlans || []).map((p) => ({
+    key: p.key,
+    name: p.name,
+    price: p.price,
+    access_level: p.access_level,
+    interviews: p.interviews_total,
+    description: (p.features || []).join(", "),
+  }));
   const [scope, setScope] = useState("institution");
   const [selectedLevels, setSelectedLevels] = useState([]);
   const [selectedDept, setSelectedDept] = useState("");
@@ -850,7 +943,7 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
         <div className="mb-4">
           <label className="mb-1 block text-xs font-semibold text-slate-600">Step 2: Select Journey Levels</label>
           <div className="space-y-2">
-            {JOURNEY_LEVELS.map((l) => (
+            {displayLevels.map((l) => (
               <label key={l.level} className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition ${
                 selectedLevels.includes(l.level)
                   ? "border-brand-300 bg-brand-50"
@@ -877,7 +970,7 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
         <div className="mb-4">
           <label className="mb-1 block text-xs font-semibold text-slate-600">Step 3: Subscription Plan (optional)</label>
           <div className="space-y-2">
-            {PLAN_OPTIONS.map((plan) => (
+            {displayPlans.map((plan) => (
               <label key={plan.key} className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition ${
                 selectedPlan === plan.key
                   ? "border-emerald-300 bg-emerald-50"
@@ -1020,12 +1113,6 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
   );
 }
 
-const PLAN_OPTIONS = [
-  { key: "basic", name: "Basic", price: 499, interviews: 4, access_level: 1, description: "Resume, Portfolio, Communication, Profile" },
-  { key: "advanced", name: "Advanced", price: 1199, interviews: 12, access_level: 3, description: "Technical Interview, HR, Behavioral, Mock" },
-  { key: "professional", name: "Professional", price: 1999, interviews: 24, access_level: 6, description: "Full access — System Design, Leadership, Placement Master" },
-];
-
 export default function InstitutionDetail() {
   const { user } = useAuth();
   const isMasterAdmin = user?.role === "master_admin";
@@ -1046,6 +1133,13 @@ export default function InstitutionDetail() {
   const [editingStudent, setEditingStudent] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deletingDept, setDeletingDept] = useState(null);
+  const [catalog, setCatalog] = useState({ levels: [], paidPlans: [] });
+
+  useEffect(() => {
+    apiFetch("/api/mentorship/admin/plans")
+      .then((data) => setCatalog({ levels: data.plans || [], paidPlans: data.subscription_plans || [] }))
+      .catch(() => {});
+  }, []);
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -1213,11 +1307,19 @@ export default function InstitutionDetail() {
         </div>
 
         {isMasterAdmin && (
-          <InterviewGapSetting
-            institutionId={institution.id}
-            currentGapDays={institution.interview_gap_days || 0}
-            onUpdate={(newGap) => setInstitution((prev) => ({ ...prev, interview_gap_days: newGap }))}
-          />
+          <>
+            <InterviewGapSetting
+              institutionId={institution.id}
+              currentGapDays={institution.interview_gap_days || 0}
+              onUpdate={(newGap) => setInstitution((prev) => ({ ...prev, interview_gap_days: newGap }))}
+            />
+            <PricingSetting
+              institutionId={institution.id}
+              pricing={institution.pricing}
+              defaults={Object.fromEntries(catalog.paidPlans.map((p) => [`${p.key}_price`, p.price]))}
+              onUpdate={(newPricing) => setInstitution((prev) => ({ ...prev, pricing: newPricing }))}
+            />
+          </>
         )}
       </section>
 
@@ -1406,7 +1508,8 @@ export default function InstitutionDetail() {
         institutionId={id} onCreated={loadDepartments} />
 
       <JourneyAccessAssignModal open={showAssignJourney} onClose={() => setShowAssignJourney(false)}
-        institutionId={id} departments={departments} students={students} onAssigned={() => { loadStudents(); refreshAnalytics(); }} />
+        institutionId={id} departments={departments} students={students} onAssigned={() => { loadStudents(); refreshAnalytics(); }}
+        levels={catalog.levels} paidPlans={catalog.paidPlans} />
 
       <StudentEditModal open={!!editingStudent} onClose={() => setEditingStudent(null)}
         student={editingStudent} departments={departments} onSaved={() => { setEditingStudent(null); loadStudents(); }} />
