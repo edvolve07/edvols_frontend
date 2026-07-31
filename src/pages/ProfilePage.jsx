@@ -133,7 +133,6 @@ function detailItems(role, user) {
   ];
   if (isStudentRole(role)) {
     items.push(
-      { icon: ShieldCheck, label: "Organization", value: user?.organization },
       { icon: GraduationCap, label: "Stream / Course", value: user?.stream },
       { icon: GraduationCap, label: "College Name", value: user?.college_name },
       { icon: MapPin, label: "College Address", value: user?.college_address },
@@ -443,20 +442,18 @@ export default function ProfilePage() {
                   placeholder="+91 98765 43210"
                 />
               </label>
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                  {isStudent ? "College / Institution" : "Organization"}
-                </span>
-                <input
-                  className="field"
-                  value={form.organization}
-                  onChange={(event) => updateField("organization", event.target.value)}
-                  maxLength={120}
-                  placeholder={role === "admin" ? "Institution or college name" : "Organization name"}
-                />
-              </label>
               {isStudent ? (
                 <>
+                  <label className="block">
+                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">College Name</span>
+                    <input
+                      className="field"
+                      value={form.college_name}
+                      onChange={(event) => updateField("college_name", event.target.value)}
+                      maxLength={255}
+                      placeholder="Your college / institution name"
+                    />
+                  </label>
                   <label className="block">
                     <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Stream / Course</span>
                     <input
@@ -475,16 +472,6 @@ export default function ProfilePage() {
                       onChange={(event) => updateField("interested_role", event.target.value)}
                       maxLength={80}
                       placeholder="Frontend Developer, Data Analyst..."
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">College Name</span>
-                    <input
-                      className="field"
-                      value={form.college_name}
-                      onChange={(event) => updateField("college_name", event.target.value)}
-                      maxLength={255}
-                      placeholder="Your college / institution name"
                     />
                   </label>
                   <label className="block md:col-span-2">
@@ -509,16 +496,28 @@ export default function ProfilePage() {
                   </label>
                 </>
               ) : (
-                <label className="block">
-                  <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Role / Designation</span>
-                  <input
-                    className="field"
-                    value={form.interested_role}
-                    onChange={(event) => updateField("interested_role", event.target.value)}
-                    maxLength={80}
-                    placeholder="Placement Coordinator, Operations Lead..."
-                  />
-                </label>
+                <>
+                  <label className="block">
+                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Organization</span>
+                    <input
+                      className="field"
+                      value={form.organization}
+                      onChange={(event) => updateField("organization", event.target.value)}
+                      maxLength={120}
+                      placeholder={role === "admin" ? "Institution or college name" : "Organization name"}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Role / Designation</span>
+                    <input
+                      className="field"
+                      value={form.interested_role}
+                      onChange={(event) => updateField("interested_role", event.target.value)}
+                      maxLength={80}
+                      placeholder="Placement Coordinator, Operations Lead..."
+                    />
+                  </label>
+                </>
               )}
               <label className="block">
                 <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Location</span>
