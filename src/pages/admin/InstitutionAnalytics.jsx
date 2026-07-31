@@ -93,6 +93,187 @@ function Section({ title, icon: Icon, right, children }) {
 const TABLE_TH = "px-4 py-3 font-semibold text-slate-600 whitespace-nowrap";
 const TABLE_TD = "px-4 py-3 whitespace-nowrap";
 
+function PrintTable({ title, head, rows }) {
+  if (!rows.length) return null;
+  return (
+    <div className="mt-6">
+      <h2 className="mb-2 text-base font-bold text-slate-900">{title}</h2>
+      <table className="w-full text-left" style={{ overflowWrap: "anywhere" }}>
+        <thead>
+          <tr>
+            {head.map((h) => (
+              <th key={h} className="px-3 py-2 font-semibold text-slate-700">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              {r.map((c, j) => (
+                <td key={j} className="px-3 py-2 text-slate-700">
+                  {c}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PrintList({ title, items }) {
+  if (!items.length) return null;
+  return (
+    <div>
+      <h2 className="mb-2 text-base font-bold text-slate-900">{title}</h2>
+      <ul className="space-y-1">
+        {items.map((t, i) => (
+          <li key={i} className="text-sm text-slate-700">
+            {t}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function PrintReport({ colleges, totals, selectedCollege, detail }) {
+  const stats = detail?.stats || null;
+  const performance = stats
+    ? [
+        { name: "Aptitude", score: stats.avg_aptitude },
+        { name: "Interview", score: stats.avg_interview },
+        { name: "Communication", score: stats.avg_communication },
+        { name: "Programming", score: stats.avg_programming },
+        { name: "Readiness", score: stats.avg_readiness },
+      ].filter((d) => d.score != null)
+    : [];
+  const planRows = (detail?.revenue_by_plan || []).filter((p) => Number(p.revenue) > 0);
+  const students = detail?.students || [];
+
+  const scoreCell = (v) => (v != null ? Math.round(Number(v)) : "—");
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold text-slate-900">Institution Analytics Report</h1>
+      <p className="mt-1 text-sm text-slate-500">
+        {selectedCollege?.name || "All colleges"} · Generated {new Date().toLocaleDateString()}
+      </p>
+
+      {selectedCollege && detail ? (
+        <>
+          <div className="mt-5 grid grid-cols-5 gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Students</p>
+              <p className="text-lg font-bold text-slate-900">{num(stats?.total_students)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Paid students</p>
+              <p className="text-lg font-bold text-slate-900">{num(stats?.paid_students)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Revenue</p>
+              <p className="text-lg font-bold text-slate-900">{inr(stats?.revenue)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Completed interviews</p>
+              <p className="text-lg font-bold text-slate-900">{num(stats?.completed_interviews)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Journeys active / done</p>
+              <p className="text-lg font-bold text-slate-900">
+                {num(stats?.active_journeys)} / {num(stats?.completed_journeys)}
+              </p>
+            </div>
+          </div>
+
+          <PrintTable
+            title="Average performance by module"
+            head={["Module", "Avg score"]}
+            rows={performance.map((d) => [d.name, scoreCell(d.score)])}
+          />
+
+          <PrintTable
+            title="Revenue by plan"
+            head={["Plan", "Students", "Revenue"]}
+            rows={planRows.map((p) => [p.plan_name, num(p.students), inr(p.revenue)])}
+          />
+
+          <PrintTable
+            title="Revenue & students by branch"
+            head={["Branch", "Students", "Paid students", "Revenue"]}
+            rows={(detail?.branches || []).map((b) => [b.branch, num(b.students), num(b.paid_students), inr(b.revenue)])}
+          />
+
+          <div className="mt-6 grid grid-cols-2 gap-6">
+            <PrintList title="Top strengths" items={(detail?.strengths || []).map((s) => `${s.label} (${s.count})`)} />
+            <PrintList title="Areas to improve" items={(detail?.weaknesses || []).map((w) => `${w.label} (${w.count})`)} />
+          </div>
+
+          <PrintTable
+            title={`Student performance (${students.length})`}
+            head={["Student", "Email", "Branch", "Plan", "Paid", "Level", "Interviews", "Apt", "Int", "Comm", "Prog", "Readiness"]}
+            rows={students.map((s) => [
+              s.name,
+              s.email,
+              s.branch || "—",
+              s.plan_name || "—",
+              s.amount_paid ? inr(s.amount_paid) : "—",
+              s.current_level ? `L${s.current_level}` : "—",
+              num(s.completed_interviews),
+              scoreCell(s.avg_aptitude),
+              scoreCell(s.avg_interview),
+              scoreCell(s.avg_communication),
+              scoreCell(s.avg_programming),
+              scoreCell(s.readiness_score),
+            ])}
+          />
+        </>
+      ) : (
+        <>
+          <div className="mt-5 grid grid-cols-4 gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Colleges</p>
+              <p className="text-lg font-bold text-slate-900">{num(totals?.colleges)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total students</p>
+              <p className="text-lg font-bold text-slate-900">{num(totals?.students)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Paid students</p>
+              <p className="text-lg font-bold text-slate-900">{num(totals?.paid_students)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total revenue</p>
+              <p className="text-lg font-bold text-slate-900">{inr(totals?.revenue)}</p>
+            </div>
+          </div>
+
+          <PrintTable
+            title="All colleges"
+            head={["College", "Students", "Branches", "Paid", "Revenue", "Aptitude", "Interview", "Readiness", "Interviews done"]}
+            rows={colleges.map((c) => [
+              c.name,
+              num(c.student_count),
+              c.branch_count != null ? num(c.branch_count) : "—",
+              num(c.paid_students),
+              inr(c.revenue),
+              scoreCell(c.avg_aptitude),
+              scoreCell(c.avg_interview),
+              scoreCell(c.avg_readiness),
+              num(c.completed_interviews),
+            ])}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function InstitutionAnalytics() {
   const [colleges, setColleges] = useState([]);
   const [totals, setTotals] = useState(null);
@@ -190,13 +371,7 @@ export default function InstitutionAnalytics() {
 
   return (
     <div id="analytics-print" className="mx-auto max-w-[1480px] px-4 py-5 sm:px-6 lg:px-10 lg:py-7">
-      <div className="hidden print:block">
-        <h1 className="text-2xl font-bold text-slate-900">Institution Analytics Report</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {selectedCollege?.name || "All colleges"} · Generated {new Date().toLocaleDateString()}
-        </p>
-      </div>
-
+      <div className="print:hidden">
       <section className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Institution Analytics</h1>
@@ -592,6 +767,11 @@ export default function InstitutionAnalytics() {
           )}
         </>
       )}
+      </div>
+
+      <div className="hidden print:block">
+        <PrintReport colleges={colleges} totals={totals} selectedCollege={selectedCollege} detail={detail} />
+      </div>
     </div>
   );
 }
