@@ -771,7 +771,7 @@ function StudentEditModal({ open, onClose, student, departments, onSaved }) {
   );
 }
 
-function JourneyAccessAssignModal({ open, onClose, institutionId, departments, students, onAssigned, levels, paidPlans }) {
+function JourneyAccessAssignModal({ open, onClose, institutionId, departments, students, onAssigned, levels, paidPlans, pricing }) {
   const displayLevels = (levels || []).map((l) => ({
     level: l.level_access,
     name: `Level ${l.level_access} — ${l.name}`,
@@ -781,7 +781,8 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
   const displayPlans = (paidPlans || []).map((p) => ({
     key: p.key,
     name: p.name,
-    price: p.price,
+    price: pricing?.[`${p.key}_price`] ?? p.price,
+    negotiated: pricing?.[`${p.key}_price`] != null,
     access_level: p.access_level,
     interviews: p.interviews_total,
     description: (p.features || []).join(", "),
@@ -982,7 +983,10 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-slate-900">{plan.name}</p>
-                    <span className="text-sm font-bold text-emerald-600">₹{plan.price}</span>
+                    <span className="text-sm font-bold text-emerald-600">
+                      ₹{plan.price}
+                      {plan.negotiated && <span className="ml-1 text-[10px] font-semibold text-slate-400">per head</span>}
+                    </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">Level {plan.access_level} · {plan.interviews} interviews</p>
                   <p className="text-[11px] text-slate-400 mt-0.5">{plan.description}</p>
@@ -1509,7 +1513,7 @@ export default function InstitutionDetail() {
 
       <JourneyAccessAssignModal open={showAssignJourney} onClose={() => setShowAssignJourney(false)}
         institutionId={id} departments={departments} students={students} onAssigned={() => { loadStudents(); refreshAnalytics(); }}
-        levels={catalog.levels} paidPlans={catalog.paidPlans} />
+        levels={catalog.levels} paidPlans={catalog.paidPlans} pricing={institution?.pricing} />
 
       <StudentEditModal open={!!editingStudent} onClose={() => setEditingStudent(null)}
         student={editingStudent} departments={departments} onSaved={() => { setEditingStudent(null); loadStudents(); }} />
