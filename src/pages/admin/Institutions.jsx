@@ -28,6 +28,9 @@ function InstitutionFormModal({ institution, onClose, onSaved }) {
     email: institution?.email || "",
     phone: institution?.phone || "",
     address: institution?.address || "",
+    basic_price: institution?.pricing?.basic_price ?? "",
+    advanced_price: institution?.pricing?.advanced_price ?? "",
+    professional_price: institution?.pricing?.professional_price ?? "",
     status: institution?.status || "active",
     modules: institution?.modules || {
       aptitude: true, coding: true, interviews: true, resumeBuilder: false, certificates: true,
@@ -109,6 +112,24 @@ function InstitutionFormModal({ institution, onClose, onSaved }) {
           <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">Address</label>
             <textarea className="field min-h-[60px]" value={form.address} onChange={(e) => update("address", e.target.value)} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-600">Per-head Plan Pricing (₹ per student)</label>
+            <p className="mb-2 text-xs text-slate-500">Per-student price charged to this institution. Leave blank to use defaults (Basic ₹499 / Advanced ₹1,199 / Professional ₹1,999).</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-600">Basic</label>
+                <input className="field" type="number" min={0} placeholder="₹499" value={form.basic_price} onChange={(e) => update("basic_price", e.target.value)} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-600">Advanced</label>
+                <input className="field" type="number" min={0} placeholder="₹1,199" value={form.advanced_price} onChange={(e) => update("advanced_price", e.target.value)} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-600">Professional</label>
+                <input className="field" type="number" min={0} placeholder="₹1,999" value={form.professional_price} onChange={(e) => update("professional_price", e.target.value)} />
+              </div>
+            </div>
           </div>
           <div className="sm:col-span-2">
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-600">Modules</label>
