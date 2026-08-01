@@ -32,7 +32,7 @@ export default function ForgotPassword() {
       <section className="w-full max-w-md overflow-hidden rounded-2xl shadow-2xl">
         <div className="bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-950 px-6 py-5 text-white">
           <div className="flex items-center gap-3">
-            <img src="/edvols%20logo.png" alt="Edvols" className="h-10 w-auto" />
+            <img src="/edvols_logo_white_transparent.png" alt="Edvols" className="h-10 w-auto" />
             <div>
               <p className="text-lg font-black">Edvols</p>
               <p className="text-xs font-semibold text-emerald-200/70">Password recovery</p>

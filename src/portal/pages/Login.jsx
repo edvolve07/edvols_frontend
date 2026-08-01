@@ -51,7 +51,7 @@ export default function Login() {
       <section className="grid w-full max-w-5xl overflow-hidden rounded-2xl bg-brand-950 lg:grid-cols-[1fr_1.1fr]">
         <div className="relative hidden flex-col justify-between p-10 text-white lg:flex">
           <div className="flex items-center gap-3">
-            <img src="/edvols%20logo.png" alt="Edvols" className="h-10 w-auto" />
+            <img src="/edvols_logo_white_transparent.png" alt="Edvols" className="h-10 w-auto" />
             <div>
               <p className="text-2xl font-bold tracking-tight">Edvols</p>
               <p className="text-sm font-medium text-brand-300">Placement readiness workspace</p>

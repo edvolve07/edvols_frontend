@@ -63,7 +63,7 @@ function Section({ title, icon: Icon, children }) {
 function PrintHeader({ title }) {
   return (
     <div style={{ background: "linear-gradient(120deg, #064e3b 0%, #065f46 55%, #064e3b 100%)", padding: "18px 22px", display: "flex", alignItems: "center", gap: "14px", borderRadius: "10px" }}>
-      <img src="/edvols%20logo.png" alt="Edvols" style={{ height: "44px", width: "auto", background: "#fff", borderRadius: "8px", padding: "4px" }} />
+      <img src="/edvols_logo_white_transparent.png" alt="Edvols" style={{ height: "44px", width: "auto" }} />
       <div style={{ color: "#fff" }}>
         <p style={{ fontSize: "22px", fontWeight: 900, margin: 0 }}>Edvols</p>
         <p style={{ fontSize: "12px", color: "#a7f3d0", margin: 0 }}>Build your placement-ready profile</p>

@@ -175,7 +175,7 @@ export default function Signup() {
         <div className="bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-950 px-8 py-6 text-white sm:px-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src="/edvols%20logo.png" alt="Edvols" className="h-10 w-auto" />
+              <img src="/edvols_logo_white_transparent.png" alt="Edvols" className="h-10 w-auto" />
               <div>
                 <p className="text-xl font-black">Edvols</p>
                 <p className="text-xs font-semibold text-emerald-200/70">Build your placement-ready profile</p>

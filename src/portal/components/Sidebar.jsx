@@ -121,7 +121,7 @@ export default function Sidebar({ role }) {
       >
         <div className={compact ? 'px-3 pb-7 pt-8' : 'px-6 pb-7 pt-8'}>
           <Link to={home} className={compact ? 'flex justify-center' : 'flex items-center gap-3'}>
-            <img src="/edvols%20logo.png" alt="Edvols" className={compact ? 'h-10 w-auto' : 'h-10 w-auto'} />
+            <img src="/edvols_logo_white_transparent.png" alt="Edvols" className={compact ? 'h-10 w-auto' : 'h-10 w-auto'} />
             {!compact ? (
               <div className="min-w-0">
                 <p className="text-[22px] font-bold leading-none tracking-tight text-white">Edvols</p>
