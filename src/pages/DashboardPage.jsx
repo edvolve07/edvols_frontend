@@ -377,7 +377,7 @@ export default function DashboardPage() {
       </StaggerChildren>
 
       <Reveal>
-        <section className="mb-7 rounded-lg border border-slate-200 bg-white p-6">
+        <section className="hover-lift mb-7 rounded-lg border border-slate-200 bg-white p-6">
         <div className="flex items-center gap-3">
           <div className="grid h-12 w-12 place-items-center rounded-full bg-amber-100 text-amber-600">
             <Trophy size={22} />
