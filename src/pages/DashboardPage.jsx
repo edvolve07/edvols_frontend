@@ -363,7 +363,7 @@ export default function DashboardPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium text-slate-600">{label}</p>
-                <p className={clsx("mt-1 truncate font-bold leading-none text-slate-900", typeof value === "string" && value.length > 12 ? "text-2xl" : "text-3xl")}>{loading && !dashboard ? "--" : value}</p>
+                <p className={clsx("mt-1 font-bold leading-none text-slate-900", label === "Mentorship Level" ? "text-xl" : "text-3xl")}>{loading && !dashboard ? "--" : value}</p>
                 <p className="mt-4 text-xs font-semibold text-brand-700">{caption}</p>
                 {label === "Overall Progress" ? (
                   <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
