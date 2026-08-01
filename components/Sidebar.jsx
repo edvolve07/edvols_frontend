@@ -75,7 +75,7 @@ export default function Sidebar({ open = false, onClose = () => {}, width = DEFA
     >
       <div className={clsx("pb-7 pt-8", compact ? "px-3" : "px-6")}>
         <div className={clsx("flex items-center gap-3", compact && "justify-center")}>
-          <img src="/edvols%20logo.png" alt="Edvols" className="h-10 w-auto" />
+          <img src="/edvols_logo_white_transparent.png" alt="Edvols" className="h-10 w-auto" />
           <div className={clsx("min-w-0", compact && "hidden")}>
             <p className="text-[22px] font-bold leading-none tracking-tight text-white">
               {APP_NAME}
