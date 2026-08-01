@@ -512,6 +512,15 @@ export default function InstitutionAnalytics() {
                     )}
                   </div>
 
+                  {detail?.college?.pricing && detail?.college?.type === "institution" && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold text-slate-500">Per-head plan pricing:</span>
+                      <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Basic ₹{detail.college.pricing.basic}</span>
+                      <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Advanced ₹{detail.college.pricing.advanced}</span>
+                      <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Professional ₹{detail.college.pricing.professional}</span>
+                    </div>
+                  )}
+
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                     <StatCard label="Students" value={num(stats?.total_students)} icon={Users} tone="emerald" />
                     <StatCard label="Paid students" value={num(stats?.paid_students)} icon={CheckCircle2} tone="violet" />
