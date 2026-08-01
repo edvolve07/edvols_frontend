@@ -114,7 +114,9 @@ export default function RevenueReport() {
   const isInst = tab === "institution";
   const rows = (isInst ? data?.institutions : data?.individuals) || [];
   const totals = (isInst ? data?.totals?.institutions : data?.totals?.individuals) || {};
-  const planRows = (isInst ? data?.plan_breakdown?.institutions : data?.plan_breakdown?.individuals) || [];
+  const planRows = isInst
+    ? data?.plan_breakdown?.institutions || []
+    : data?.plan_breakdown?.individuals || [];
   const grandTotal = (data?.totals?.institutions?.revenue || 0) + (data?.totals?.individuals?.revenue || 0);
 
   return (
@@ -171,7 +173,7 @@ export default function RevenueReport() {
               <StatCard label="Total revenue" value={inr(totals.revenue)} icon={IndianRupee} />
             </div>
 
-            <Section title="Revenue by plan" icon={FileBarChart}>
+            <Section title={isInst ? "Revenue by institution plan" : "Revenue by plan"} icon={FileBarChart}>
               {planRows.length === 0 ? (
                 <p className="py-6 text-center text-sm text-slate-400">No revenue recorded yet.</p>
               ) : (
@@ -179,16 +181,24 @@ export default function RevenueReport() {
                   <table className="w-full text-left text-sm">
                     <thead className="border-b border-slate-200 bg-slate-50">
                       <tr>
+                        {isInst && <th className="px-4 py-3 font-semibold text-slate-600">Institution</th>}
                         <th className="px-4 py-3 font-semibold text-slate-600">Plan</th>
-                        <th className="px-4 py-3 font-semibold text-slate-600">Paid students</th>
+                        {isInst && <th className="px-4 py-3 font-semibold text-slate-600">Price / head</th>}
+                        <th className="px-4 py-3 font-semibold text-slate-600">{isInst ? "Students" : "Paid students"}</th>
                         <th className="px-4 py-3 font-semibold text-slate-600">Revenue</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {planRows.map((p) => (
-                        <tr key={p.plan_name} className="transition hover:bg-slate-50">
-                          <td className="px-4 py-3 font-medium text-slate-900">{p.plan_name}</td>
-                          <td className="px-4 py-3">{num(p.paid_students)}</td>
+                      {planRows.map((p, i) => (
+                        <tr key={`${p.institution_name || p.plan_name}-${i}`} className="transition hover:bg-slate-50">
+                          {isInst && <td className="px-4 py-3 font-medium text-slate-900">{p.institution_name}</td>}
+                          <td className="px-4 py-3 text-slate-700">{p.plan_name}</td>
+                          {isInst && (
+                            <td className="px-4 py-3">
+                              {p.price != null ? <span className="font-semibold text-slate-900">{inr(p.price)}</span> : <span className="text-slate-400">—</span>}
+                            </td>
+                          )}
+                          <td className="px-4 py-3">{num(p.students ?? p.paid_students)}</td>
                           <td className="px-4 py-3 font-semibold text-slate-900">{inr(p.revenue)}</td>
                         </tr>
                       ))}
@@ -208,6 +218,7 @@ export default function RevenueReport() {
                       <tr>
                         <th className="px-4 py-3 font-semibold text-slate-600">{isInst ? "Institution" : "College"}</th>
                         {isInst && <th className="px-4 py-3 font-semibold text-slate-600">Code</th>}
+                        {isInst && <th className="px-4 py-3 font-semibold text-slate-600">Pricing (B / A / P)</th>}
                         <th className="px-4 py-3 font-semibold text-slate-600">Students</th>
                         <th className="px-4 py-3 font-semibold text-slate-600">Paid</th>
                         <th className="px-4 py-3 font-semibold text-slate-600">Revenue</th>
@@ -218,6 +229,19 @@ export default function RevenueReport() {
                         <tr key={r.id || r.name} className="transition hover:bg-slate-50">
                           <td className="px-4 py-3 font-medium text-slate-900">{r.name}</td>
                           {isInst && <td className="px-4 py-3 text-slate-500">{r.code || "—"}</td>}
+                          {isInst && (
+                            <td className="px-4 py-3">
+                              <span className="inline-flex flex-wrap gap-1.5">
+                                {r.pricing && (
+                                  <>
+                                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">B ₹{r.pricing.basic}</span>
+                                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">A ₹{r.pricing.advanced}</span>
+                                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">P ₹{r.pricing.professional}</span>
+                                  </>
+                                )}
+                              </span>
+                            </td>
+                          )}
                           <td className="px-4 py-3">{num(r.students)}</td>
                           <td className="px-4 py-3">{num(r.paid_students)}</td>
                           <td className="px-4 py-3 font-semibold text-slate-900">{inr(r.revenue)}</td>
@@ -245,14 +269,27 @@ export default function RevenueReport() {
 
         <h2 style={{ fontSize: "16px", fontWeight: 800, color: "#064e3b", margin: "22px 0 0" }}>Institution Revenue</h2>
         <PrintTable
-          title="Revenue by plan"
-          head={["Plan", "Paid students", "Revenue"]}
-          rows={(data?.plan_breakdown?.institutions || []).map((p) => [p.plan_name, num(p.paid_students), inr(p.revenue)])}
+          title={`Plan pricing and revenue per institution (${(data?.plan_breakdown?.institutions || []).length})`}
+          head={["Institution", "Plan", "Price / head", "Students", "Revenue"]}
+          rows={(data?.plan_breakdown?.institutions || []).map((p) => [
+            p.institution_name,
+            p.plan_name,
+            p.price != null ? inr(p.price) : "—",
+            num(p.students),
+            inr(p.revenue),
+          ])}
         />
         <PrintTable
           title={`All institutions (${(data?.institutions || []).length})`}
-          head={["Institution", "Code", "Students", "Paid", "Revenue"]}
-          rows={(data?.institutions || []).map((i) => [i.name, i.code || "—", num(i.students), num(i.paid_students), inr(i.revenue)])}
+          head={["Institution", "Code", "Pricing (B/A/P)", "Students", "Paid", "Revenue"]}
+          rows={(data?.institutions || []).map((i) => [
+            i.name,
+            i.code || "—",
+            i.pricing ? `₹${i.pricing.basic} / ₹${i.pricing.advanced} / ₹${i.pricing.professional}` : "—",
+            num(i.students),
+            num(i.paid_students),
+            inr(i.revenue),
+          ])}
         />
 
         <h2 style={{ fontSize: "16px", fontWeight: 800, color: "#064e3b", margin: "26px 0 0" }}>Individual Revenue</h2>
