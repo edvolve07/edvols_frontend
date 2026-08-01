@@ -589,17 +589,21 @@ html[data-assessment-fullscreen] .sidebar ~ * {
   .print\:hidden {
     display: none !important;
   }
-  #analytics-print {
+  #analytics-print,
+  #revenue-print {
     width: 100% !important;
     max-width: none !important;
     padding: 0 !important;
   }
-  #analytics-print table {
+  #analytics-print table,
+  #revenue-print table {
     border-collapse: collapse !important;
     font-size: 11px !important;
   }
   #analytics-print th,
-  #analytics-print td {
+  #analytics-print td,
+  #revenue-print th,
+  #revenue-print td {
     border: 1px solid #e2e8f0 !important;
   }
 }

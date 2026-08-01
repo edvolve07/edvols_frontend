@@ -20,6 +20,7 @@ import CreateUser from "@/src/pages/admin/CreateUser";
 import InstitutionsPage from "@/src/pages/admin/Institutions";
 import InstitutionDetailPage from "@/src/pages/admin/InstitutionDetail";
 import InstitutionAnalytics from "@/src/pages/admin/InstitutionAnalytics";
+import RevenueReport from "@/src/pages/admin/RevenueReport";
 import MasterAdminDashboard from "@/src/pages/admin/MasterAdminDashboard";
 import MasterAdminsList from "@/src/pages/admin/MasterAdminsList";
 import EdvolsAdminDashboard from "@/src/pages/admin/EdvolsAdminDashboard";
@@ -311,6 +312,7 @@ export default function App() {
         <Route path="/master-admin/institutions" element={<AppShell><InstitutionsPage /></AppShell>} />
         <Route path="/master-admin/institutions/:id" element={<AppShell><InstitutionDetailPage /></AppShell>} />
         <Route path="/master-admin/institution-analytics" element={<AppShell><InstitutionAnalytics /></AppShell>} />
+        <Route path="/master-admin/revenue" element={<AppShell><RevenueReport /></AppShell>} />
         <Route path="/master-admin/create-admin" element={<AppShell><CreateAdmin /></AppShell>} />
         <Route path="/master-admin/create-user" element={<AppShell><CreateUser /></AppShell>} />
         <Route path="/master-admin/individual-students" element={<AppShell><IndividualStudents /></AppShell>} />
