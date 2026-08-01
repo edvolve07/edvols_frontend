@@ -8,6 +8,7 @@ import {
   Layers,
   FileBarChart,
   UserRound,
+  X,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -20,9 +21,19 @@ function num(n) {
   return Number(n || 0).toLocaleString("en-IN");
 }
 
-function StatCard({ label, value, sub, icon: Icon }) {
+function cap(str) {
+  if (!str) return "—";
+  return String(str).charAt(0).toUpperCase() + String(str).slice(1);
+}
+
+function StatCard({ label, value, sub, icon: Icon, onClick }) {
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_2px_10px_rgba(15,23,42,0.04)]">
+    <div
+      onClick={onClick}
+      className={`rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_2px_10px_rgba(15,23,42,0.04)] ${
+        onClick ? "cursor-pointer transition hover:border-emerald-200 hover:shadow-md" : ""
+      }`}
+    >
       <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
         <span className="grid h-7 w-7 place-items-center rounded-lg bg-emerald-50 text-emerald-600">
           <Icon size={15} />
@@ -101,6 +112,7 @@ export default function RevenueReport() {
   const [tab, setTab] = useState("institution");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [drill, setDrill] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,6 +122,22 @@ export default function RevenueReport() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
+
+  async function openDrill({ title, subtitle, college, paidOnly }) {
+    setDrill({ title, subtitle, students: [], loading: true, error: "" });
+    try {
+      const params = new URLSearchParams({ limit: 500 });
+      if (college && college !== "Unspecified") params.set("college", college);
+      const data = await apiFetch(`/api/subscription/admin/individual-students?${params}`);
+      let list = data.students || [];
+      if (college === "Unspecified") list = list.filter((s) => !s.college_name);
+      else if (college) list = list.filter((s) => (s.college_name || "").toLowerCase() === college.toLowerCase());
+      if (paidOnly) list = list.filter((s) => s.subscription);
+      setDrill((prev) => ({ ...prev, students: list, loading: false }));
+    } catch (err) {
+      setDrill((prev) => ({ ...prev, loading: false, error: err.message || "Failed to load students" }));
+    }
+  }
 
   const isInst = tab === "institution";
   const rows = (isInst ? data?.institutions : data?.individuals) || [];
@@ -168,10 +196,25 @@ export default function RevenueReport() {
           <>
             <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard label={isInst ? "Institutions" : "College groups"} value={num(totals.groups)} icon={Layers} />
-              <StatCard label="Total students" value={num(totals.students)} icon={Users} />
-              <StatCard label="Paid students" value={num(totals.paid_students)} icon={Users} />
+              <StatCard
+                label="Total students"
+                value={num(totals.students)}
+                icon={Users}
+                onClick={isInst ? undefined : () => openDrill({ title: "All individual students", subtitle: "Every student under individual self-pay", college: null, paidOnly: false })}
+              />
+              <StatCard
+                label="Paid students"
+                value={num(totals.paid_students)}
+                icon={Users}
+                onClick={isInst ? undefined : () => openDrill({ title: "Paid individual students", subtitle: "Individual students with an active plan", college: null, paidOnly: true })}
+              />
               <StatCard label="Total revenue" value={inr(totals.revenue)} icon={IndianRupee} />
             </div>
+            {!isInst && (
+              <p className="-mt-4 mb-6 text-xs text-slate-400">
+                Tip: click a college group or the student counts to view the full student list with plan details.
+              </p>
+            )}
 
             <Section title={isInst ? "Revenue by institution plan" : "Revenue by plan"} icon={FileBarChart}>
               {planRows.length === 0 ? (
@@ -226,7 +269,11 @@ export default function RevenueReport() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {rows.map((r) => (
-                        <tr key={r.id || r.name} className="transition hover:bg-slate-50">
+                        <tr
+                          key={r.id || r.name}
+                          onClick={isInst ? undefined : () => openDrill({ title: `${r.name} students`, subtitle: `Individual students grouped under ${r.name}`, college: r.name, paidOnly: false })}
+                          className={`transition hover:bg-slate-50 ${isInst ? "" : "cursor-pointer"}`}
+                        >
                           <td className="px-4 py-3 font-medium text-slate-900">{r.name}</td>
                           {isInst && <td className="px-4 py-3 text-slate-500">{r.code || "—"}</td>}
                           {isInst && (
@@ -304,6 +351,65 @@ export default function RevenueReport() {
           rows={(data?.individuals || []).map((i) => [i.name, num(i.students), num(i.paid_students), inr(i.revenue)])}
         />
       </div>
+
+      {drill && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/40 py-10 backdrop-blur-sm" onClick={() => setDrill(null)}>
+          <div className="relative w-full max-w-4xl rounded-2xl border border-slate-100 bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <button type="button" onClick={() => setDrill(null)} className="absolute right-4 top-4 text-slate-400 transition hover:text-slate-600">
+              <X size={20} />
+            </button>
+            <h2 className="text-lg font-semibold text-slate-900">{drill.title}</h2>
+            <p className="mt-0.5 text-sm text-slate-500">
+              {drill.subtitle} · {drill.loading ? "loading…" : `${num(drill.students.length)} student(s)`}
+            </p>
+
+            {drill.loading ? (
+              <div className="flex items-center justify-center py-14">
+                <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+              </div>
+            ) : drill.error ? (
+              <p className="mt-4 rounded-lg border border-red-100 bg-red-50 p-3 text-sm font-medium text-red-700">{drill.error}</p>
+            ) : drill.students.length === 0 ? (
+              <p className="py-12 text-center text-sm text-slate-400">No students found.</p>
+            ) : (
+              <div className="mt-4 max-h-[60vh] overflow-auto rounded-xl border border-slate-100">
+                <table className="w-full text-left text-sm">
+                  <thead className="sticky top-0 border-b border-slate-200 bg-slate-50">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold text-slate-600">Student</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">Email</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">College</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">Plan</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">Amount</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {drill.students.map((s) => (
+                      <tr key={s.id} className="transition hover:bg-slate-50">
+                        <td className="px-4 py-3 font-medium text-slate-900">{s.name}</td>
+                        <td className="px-4 py-3 text-slate-500">{s.email}</td>
+                        <td className="px-4 py-3 text-slate-500">{s.college_name || "Unspecified"}</td>
+                        <td className="px-4 py-3 text-slate-700">{s.subscription?.plan_name || "No plan"}</td>
+                        <td className="px-4 py-3 font-semibold text-slate-900">
+                          {s.subscription?.amount_paid != null ? inr(s.subscription.amount_paid) : "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          {s.subscription ? (
+                            <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">{cap(s.subscription.status)}</span>
+                          ) : (
+                            <span className="text-slate-400">No subscription</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
