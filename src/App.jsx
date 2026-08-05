@@ -176,7 +176,15 @@ function AppShell({ children }) {
             </button>
           </header>
         ) : !isInterviewPage ? (
-          <div className="sticky top-0 z-30 flex h-14 items-center justify-end gap-2 px-4 sm:px-6 lg:px-10">
+          <div className="sticky top-0 z-30 flex h-14 items-center gap-2 px-4 sm:px-6 lg:px-10">
+            <button
+              type="button"
+              aria-label="Open sidebar"
+              onClick={() => setSidebarOpen(true)}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 lg:hidden"
+            >
+              <Menu size={20} />
+            </button>
             {user?.role !== "admin" && user?.role !== "master_admin" ? (
               <button className="hidden h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 sm:inline-flex">
                 <Flame size={17} className="text-amber-500" />
@@ -186,7 +194,7 @@ function AppShell({ children }) {
             <button
               type="button"
               onClick={() => navigate("/profile")}
-              className="inline-flex h-10 items-center gap-2 rounded-xl bg-white px-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 sm:px-3"
+              className="ml-auto inline-flex h-10 items-center gap-2 rounded-xl bg-white px-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 sm:px-3"
             >
               <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-800 text-xs font-bold text-white">
                 {(user?.name || "U").slice(0, 1).toUpperCase()}
