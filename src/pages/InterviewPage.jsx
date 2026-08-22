@@ -1221,7 +1221,13 @@ export default function InterviewPage() {
     setFeedback("");
     setMetrics(null);
     setPhase("instructions");
-    localStorage.setItem(STORAGE_KEY, interviewSession.session_id);
+  }
+
+  function handleBegin() {
+    if (session?.session_id) {
+      localStorage.setItem(STORAGE_KEY, session.session_id);
+    }
+    setPhase("live");
   }
 
   const handleAnswer = useCallback(
@@ -1332,7 +1338,7 @@ export default function InterviewPage() {
         session={session}
         totalQuestions={totalQuestions}
         timeMinutes={Math.round(INTERVIEW_TOTAL_SECONDS / 60)}
-        onBegin={() => setPhase("live")}
+        onBegin={handleBegin}
       />
     );
   }
