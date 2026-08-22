@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowRight,
   Award,
   BarChart3,
@@ -10,8 +11,10 @@ import {
   Clock,
   Eye,
   FileText,
+  Info,
   ListChecks,
   Loader2,
+  MessageSquare,
   Mic,
   Mic2,
   RotateCcw,
@@ -32,6 +35,7 @@ import { useNavigate } from "@/src/navigation";
 import { useAuth } from "@/src/portal/context/AuthContext";
 import { apiFetch, endInterview, getNextInterview, getSessionState, startInterview, submitAnswer as submitInterviewAnswer, getSavedResume } from "@/lib/api";
 import { useRecorder } from "@/components/VoiceRecorder";
+import { useFaceMetrics } from "@/src/hooks/useFaceMetrics";
 
 function MetricBar({ label, value, color }) {
   const percentage = Math.min(100, Math.max(0, value * 10));
@@ -329,6 +333,86 @@ function SetupForm({ onStart }) {
 }
 
 const INTERVIEW_TOTAL_SECONDS = 40 * 60;
+
+function InstructionsScreen({ session, totalQuestions, timeMinutes, onBegin }) {
+  const guidelines = [
+    {
+      icon: Video,
+      text: "Your camera and microphone record every answer — body language, voice, and content are all evaluated.",
+    },
+    {
+      icon: Clock,
+      text: `You have ${timeMinutes} minutes in total for ${totalQuestions} questions (~${Math.max(1, Math.round(timeMinutes / totalQuestions))} min per answer).`,
+    },
+    {
+      icon: MessageSquare,
+      text: "After each answer you'll get instant AI feedback with scores before moving to the next question.",
+    },
+    {
+      icon: AlertTriangle,
+      text: "Switching tabs or leaving the page 3 times ends the interview automatically.",
+    },
+    {
+      icon: AlertCircle,
+      text: "Once you begin, the interview cannot be paused. Make sure your internet is stable.",
+    },
+  ];
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+      <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-[0_6px_20px_rgba(15,23,42,0.08)] sm:p-8">
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
+            <Info size={26} className="text-emerald-600" />
+          </div>
+          <h1 className="font-display text-3xl font-semibold text-slate-950">Before you begin</h1>
+          {session?.blueprint_title ? (
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+              <Mic2 size={12} /> Interview {session.interview_number} — {session.blueprint_title}
+            </p>
+          ) : null}
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            {session?.role ? `${session.role}` : "Mock interview"} · {totalQuestions} questions · {timeMinutes} minutes
+          </p>
+        </div>
+
+        <div className="mb-6 grid grid-cols-2 gap-3">
+          <div className="rounded-2xl bg-slate-50 p-4 text-center">
+            <ListChecks size={20} className="mx-auto text-emerald-500" />
+            <p className="mt-1.5 text-3xl font-bold text-slate-950">{totalQuestions}</p>
+            <p className="text-xs font-medium text-slate-500">Questions</p>
+          </div>
+          <div className="rounded-2xl bg-slate-50 p-4 text-center">
+            <Clock size={20} className="mx-auto text-emerald-500" />
+            <p className="mt-1.5 text-3xl font-bold text-slate-950">
+              {timeMinutes}<span className="text-base font-semibold text-slate-400"> min</span>
+            </p>
+            <p className="text-xs font-medium text-slate-500">Total Time Limit</p>
+          </div>
+        </div>
+
+        <ul className="mb-8 space-y-3">
+          {guidelines.map((item, index) => (
+            <li key={index} className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3.5">
+              <item.icon size={16} className="mt-0.5 shrink-0 text-slate-500" />
+              <span className="text-sm leading-6 text-slate-700">{item.text}</span>
+            </li>
+          ))}
+        </ul>
+
+        <button
+          onClick={onBegin}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-4 text-sm font-semibold text-white shadow-card transition hover:bg-emerald-600"
+        >
+          Begin Interview <ArrowRight size={16} />
+        </button>
+        <p className="mt-3 text-center text-xs text-slate-400">
+          Your camera will turn on when the interview begins
+        </p>
+      </div>
+    </div>
+  );
+}
 
 const FEEDBACK_TABS = [
   { id: "transcript", label: "Transcript", icon: FileText },
@@ -796,10 +880,19 @@ function LiveInterview({
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewedQuestion, setReviewedQuestion] = useState(questionNumber);
   const hadData = useRef(false);
-  const recorder = useRecorder(videoRef, waveRef, onAnswer, loading);
 
   const hasData = Boolean(transcript || feedback || metrics);
   const answered = reviewOpen && hasData;
+  const face = useFaceMetrics(videoRef, cameraOn);
+
+  const handleAnswerWithMetrics = useCallback(
+    (media) => {
+      const faceMetrics = face.failed ? null : face.getMetrics();
+      return onAnswer(media, faceMetrics);
+    },
+    [onAnswer, face]
+  );
+  const recorder = useRecorder(videoRef, waveRef, handleAnswerWithMetrics, loading);
 
   useEffect(() => {
     if (hasData && !hadData.current) {
@@ -1127,12 +1220,12 @@ export default function InterviewPage() {
     setTranscript("");
     setFeedback("");
     setMetrics(null);
-    setPhase("live");
+    setPhase("instructions");
     localStorage.setItem(STORAGE_KEY, interviewSession.session_id);
   }
 
   const handleAnswer = useCallback(
-    async (media) => {
+    async (media, faceMetrics = null) => {
       if (!session) return;
       setLoading(true);
       setError("");
@@ -1143,7 +1236,8 @@ export default function InterviewPage() {
         const data = await submitInterviewAnswer(
           session.session_id,
           media.audioBlob,
-          media.videoBlob
+          media.videoBlob,
+          faceMetrics
         );
         setTranscript(data.transcript ?? "");
         setFeedback(data.feedback ?? "");
@@ -1230,6 +1324,17 @@ export default function InterviewPage() {
       );
     }
     return <SetupForm onStart={handleStart} />;
+  }
+
+  if (phase === "instructions" && session) {
+    return (
+      <InstructionsScreen
+        session={session}
+        totalQuestions={totalQuestions}
+        timeMinutes={Math.round(INTERVIEW_TOTAL_SECONDS / 60)}
+        onBegin={() => setPhase("live")}
+      />
+    );
   }
 
   if (phase === "complete" && session) {
