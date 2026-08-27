@@ -398,7 +398,8 @@ function SessionContent({ mode, category, onComplete, conversationId, initialExc
 
     const handleDataReceived = (data) => {
       try {
-        const payload = JSON.parse(Array.from(data));
+        const bytes = data instanceof Uint8Array ? data : data?.payload ?? data;
+        const payload = JSON.parse(new TextDecoder().decode(bytes));
         if (payload.type === 'evaluation') {
           setExchanges((prev) => [...prev, {
             exchange_number: payload.exchange_number,
