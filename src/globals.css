@@ -416,146 +416,32 @@ html[data-assessment-fullscreen] .sidebar ~ * {
 .fade-slide-up-delay-3 { animation-delay: 0.3s; opacity: 0; }
 .fade-slide-up-delay-4 { animation-delay: 0.4s; opacity: 0; }
 
-/* ── LiveKit Session Theme ── */
-/* Scoped so it doesn't leak into the rest of the app */
-/* Using hex/rgb for maximum browser compatibility (avoid oklch) */
-.lk-session {
-  --radius: 0.75rem;
-  --background: var(--canvas-bg);
-  --foreground: var(--text-body);
-  --card: var(--card-bg);
-  --card-foreground: var(--text-body);
-  --popover: var(--card-bg);
-  --popover-foreground: var(--text-body);
-  --primary: var(--primary);
-  --primary-foreground: #ffffff;
-  --secondary: var(--surface-2);
-  --secondary-foreground: var(--text-body);
-  --muted: var(--border-light);
-  --muted-foreground: var(--text-muted);
-  --accent: var(--accent-light);
-  --accent-foreground: var(--accent);
-  --destructive: var(--danger);
-  --border: var(--border);
-  --input: var(--border);
-  --ring: var(--primary-hover);
-  --sidebar: var(--card-bg);
-  --sidebar-foreground: var(--text-body);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: var(--accent-light);
-  --sidebar-accent-foreground: var(--accent);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--primary-hover);
-
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: 'Plus Jakarta Sans', sans-serif;
+/* ── Voice session (Communication practice) ── */
+/* The immersive call UI lives in src/components/VoiceSession.jsx and is fully
+   styled with the app's Tailwind classes. Only the LiveKit <BarVisualizer>
+   renders its own DOM, so it needs these few rules. */
+.voice-session .lk-audio-bar-visualizer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
 }
 
-.lk-session * {
-  border-color: var(--border);
+.voice-session .lk-audio-bar {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 16px;
+  border-radius: 9999px;
+  background-color: rgba(52, 211, 153, 0.22);
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-.lk-session .bg-background { background-color: var(--background); }
-.lk-session .bg-accent { background-color: var(--accent); }
-.lk-session .bg-muted { background-color: var(--muted); }
-.lk-session .bg-card { background-color: var(--card); }
-.lk-session .bg-popover { background-color: var(--popover); }
-.lk-session .bg-secondary { background-color: var(--secondary); }
-.lk-session .bg-destructive\/10 { background-color: color-mix(in srgb, var(--destructive) 10%, transparent); }
-.lk-session .bg-destructive\/20 { background-color: color-mix(in srgb, var(--destructive) 20%, transparent); }
-.lk-session .bg-primary { background-color: var(--primary); }
-.lk-session .bg-foreground\/10 { background-color: color-mix(in srgb, var(--foreground) 10%, transparent); }
-.lk-session .bg-foreground\/12 { background-color: color-mix(in srgb, var(--foreground) 12%, transparent); }
-.lk-session .text-foreground { color: var(--foreground); }
-.lk-session .text-muted-foreground { color: var(--muted-foreground); }
-.lk-session .text-destructive { color: var(--destructive); }
-.lk-session .text-primary { color: var(--primary); }
-.lk-session .text-accent-foreground { color: var(--accent-foreground); }
-.lk-session .border-border { border-color: var(--border); }
-.lk-session .border-input { border-color: var(--input); }
-.lk-session .border-destructive\/20 { border-color: color-mix(in srgb, var(--destructive) 20%, transparent); }
-.lk-session .border-ring { border-color: var(--ring); }
-
-/* Camera toggle — use brand green instead of blue */
-.lk-session .bg-blue-500\/20 { background-color: color-mix(in srgb, #059669 20%, transparent); }
-.lk-session .hover\:bg-blue-500\/30:hover { background-color: color-mix(in srgb, #059669 30%, transparent); }
-.lk-session .border-blue-700\/10 { border-color: color-mix(in srgb, #047857 10%, transparent); }
-.lk-session .text-blue-700 { color: #047857; }
-.lk-session .dark\:bg-blue-500\/20:is(.dark *) { background-color: color-mix(in srgb, #34d399 20%, transparent); }
-.lk-session .dark\:text-blue-300:is(.dark *) { color: #6ee7b7; }
-
-/* Surface cards inside lk-session — use app card styling */
-.lk-session .bg-card {
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03), 0 1px 3px rgba(0,0,0,0.02);
-}
-
-/* Agent control bar — match app's card surface */
-.lk-session [data-lk-agent-bar] {
-  background-color: var(--card-bg) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 31px !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-}
-
-/* Disconnect button — app destructive style */
-.lk-session [data-lk-agent-bar] [data-variant="destructive"] {
-  background-color: color-mix(in srgb, var(--destructive) 10%, transparent) !important;
-  color: var(--destructive) !important;
-  border-radius: 9999px !important;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  transition: all 0.15s ease;
-}
-.lk-session [data-lk-agent-bar] [data-variant="destructive"]:hover {
-  background-color: color-mix(in srgb, var(--destructive) 20%, transparent) !important;
-}
-
-/* Agent track controls — match app toggle style */
-.lk-session [data-lk-agent-bar] [data-state="off"] {
-  background-color: var(--border-light) !important;
-  color: var(--text-muted) !important;
-  border-color: var(--border) !important;
-}
-.lk-session [data-lk-agent-bar] [data-state="on"] {
-  background-color: color-mix(in srgb, #059669 20%, transparent) !important;
-  color: #047857 !important;
-  border-color: color-mix(in srgb, #047857 10%, transparent) !important;
-}
-
-/* Chat transcript area — match app surface */
-.lk-session [data-lk-chat-transcript] {
-  background-color: color-mix(in srgb, var(--card-bg) 95%, transparent);
-  backdrop-filter: blur(8px);
-}
-
-/* Shimmer message — app typography */
-.lk-session .shimmer {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  color: var(--text-muted);
-}
-
-/* Radix data-state variants for lk-session */
-.lk-session [data-state=on] {
-  --lk-state-on: 1;
-}
-
-/* Agent audio visualizer defaults */
-.lk-session [data-lk-highlighted=true] {
-  background-color: currentColor;
-}
-
-/* Fade edges — use canvas background */
-.lk-session .fade-top {
-  background: linear-gradient(to bottom, var(--canvas-bg), transparent);
-}
-.lk-session .fade-bottom {
-  background: linear-gradient(to top, var(--canvas-bg), transparent);
+.voice-session .lk-audio-bar.lk-highlighted,
+.voice-session .lk-audio-bar[data-lk-highlighted='true'] {
+  background-color: #34d399;
+  box-shadow: 0 0 20px rgba(52, 211, 153, 0.55);
 }
 
 /* ── Global card look ──

@@ -525,29 +525,6 @@ export default function CommunicationReport({ sessionId: propSessionId, onClose 
         </SectionCard>
       )}
 
-      {/* Conversation Log (legacy fallback) */}
-      {report.conversation_log && report.conversation_log.length > 0 && !report.response_analysis?.length && (
-        <SectionCard icon={MessageSquareText} title="Conversation Log" color="slate" className="mb-6">
-          <div className="divide-y divide-slate-100 rounded-lg border border-slate-100">
-            {report.conversation_log.map((ex, i) => (
-              <div key={i}>
-                <button onClick={() => setExpandedSection(expandedSection === i ? null : i)} className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-slate-50">
-                  <span className="text-sm font-bold text-slate-700">Exchange {ex.exchange}</span>
-                  {expandedSection === i ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
-                </button>
-                {expandedSection === i && (
-                  <div className="border-t border-slate-100 px-4 py-3 space-y-2">
-                    {ex.interviewer && <div><p className="text-xs font-semibold text-slate-400">Interviewer:</p><p className="text-sm text-slate-700">{ex.interviewer}</p></div>}
-                    {ex.student && <div><p className="text-xs font-semibold text-slate-400">Student:</p><p className="text-sm text-slate-700">{ex.student}</p></div>}
-                    {ex.feedback && <div className="rounded bg-amber-50 p-2"><p className="text-xs font-semibold text-amber-600">Feedback:</p><p className="text-sm text-amber-800">{ex.feedback}</p></div>}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      )}
-
       {/* Category Insights */}
       {report.category_insights && (report.category_insights.category_mastery || report.category_insights.key_takeaway) && (
         <SectionCard icon={Target} title="Category Insights" color="violet" className="mb-6">

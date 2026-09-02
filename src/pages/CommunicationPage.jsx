@@ -5,7 +5,7 @@ import { Loader2, Sparkles, MessageSquareText, Mic2, AlertCircle, CheckCircle, R
 import { apiFetch } from '@/lib/api';
 import { useNavigate } from '@/src/navigation';
 import { COMMUNICATION_MODES, GENERAL_SCENARIOS, COMMUNICATION_CATEGORIES, COMMUNICATION_WORKFLOW } from '@/src/constants';
-import { AgentSessionView_01 } from '../components/agents-ui/blocks/agent-session-view-01';
+import VoiceSession from '../components/VoiceSession';
 import { StartAudioButton } from '../components/agents-ui/start-audio-button';
 import { Button } from '../components/ui/button';
 
@@ -432,18 +432,7 @@ function SessionContent({ mode, category, onComplete, conversationId, initialExc
 
   if (finalizer.status === 'PROCESSING' || finalizer.status === 'PENDING' || finalizer.status === 'FAILED' || finalizer.status === 'COMPLETED') {
     if (finalizer.status === 'PENDING' && !hasFinalizedRef.current) {
-      return (
-        <AgentSessionView_01
-          supportsChatInput={true}
-          supportsVideoInput={true}
-          supportsScreenShare={true}
-          audioVisualizerType="bar"
-          audioVisualizerColor="#34d399"
-          audioVisualizerColorShift={0.3}
-          audioVisualizerBarCount={5}
-          onDisconnect={handleEndCall}
-        />
-      );
+      return <VoiceSession category={category} onDisconnect={handleEndCall} />;
     }
     return (
       <FinalizingScreen
@@ -455,18 +444,7 @@ function SessionContent({ mode, category, onComplete, conversationId, initialExc
     );
   }
 
-  return (
-    <AgentSessionView_01
-      supportsChatInput={true}
-      supportsVideoInput={true}
-      supportsScreenShare={true}
-      audioVisualizerType="bar"
-      audioVisualizerColor="#34d399"
-      audioVisualizerColorShift={0.3}
-      audioVisualizerBarCount={5}
-      onDisconnect={handleEndCall}
-    />
-  );
+  return <VoiceSession category={category} onDisconnect={handleEndCall} />;
 }
 
 function SessionView({ roomInfo, onComplete, conversationId, initialExchanges }) {
@@ -498,12 +476,15 @@ function SessionView({ roomInfo, onComplete, conversationId, initialExchanges })
 
   return (
     <SessionProvider session={session}>
-      <div className="lk-session fixed inset-0 z-[100] overflow-hidden">
+      <div className="fixed inset-0 z-[100] overflow-hidden bg-[#070d0b]">
         <SessionContent mode={roomInfo.mode} category={roomInfo.category} onComplete={onComplete}
           conversationId={conversationId} initialExchanges={initialExchanges} />
         <RoomAudioRenderer />
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110]">
-          <StartAudioButton label="Start Audio" />
+        <div className="fixed left-1/2 top-20 z-[130] -translate-x-1/2">
+          <StartAudioButton
+            label="Enable audio"
+            className="rounded-full border border-emerald-400/30 bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-400"
+          />
         </div>
       </div>
     </SessionProvider>
