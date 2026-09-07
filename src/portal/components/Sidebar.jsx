@@ -135,17 +135,7 @@ export default function Sidebar({ role }) {
           {renderLinks(false)}
         </nav>
 
-        <div className={compact ? 'space-y-4 px-2 pb-5' : 'space-y-4 px-5 pb-5'}>
-          <button
-            type="button"
-            onClick={handleLogout}
-            title={compact ? 'Logout' : undefined}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-white/15"
-          >
-            <LogOut size={16} />
-            {!compact ? <span>Logout</span> : null}
-          </button>
-        </div>
+        {/* Sidebar bottom */}
       </aside>
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col lg:pl-[var(--sidebar-width)]">
@@ -166,16 +156,28 @@ export default function Sidebar({ role }) {
 
           <img src="/edvols_logo_white_transparent.png" alt="Edvols" className="h-7 w-auto hidden md:block" />
 
-          <button
-            type="button"
-            onClick={() => navigate("/profile")}
-            className="inline-flex shrink-0 items-center gap-3 rounded-xl px-1 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:px-2"
-          >
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-emerald-800 text-sm font-bold text-white">
-              {(user?.name || "U").slice(0, 1).toUpperCase()}
-            </span>
-            <span className="hidden max-w-36 truncate sm:inline">{user?.name || "User"}</span>
-          </button>
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <button
+              type="button"
+              onClick={() => navigate("/profile")}
+              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:px-3"
+            >
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-emerald-800 text-xs font-bold text-white">
+                {(user?.name || "U").slice(0, 1).toUpperCase()}
+              </span>
+              <span className="hidden max-w-36 truncate sm:inline">{user?.name || "User"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              title="Log out"
+              className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200"
+            >
+              <LogOut size={16} />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
         </header>
 
         <nav className="flex gap-2 overflow-x-auto border-b border-slate-100 bg-white px-4 py-2 lg:hidden">

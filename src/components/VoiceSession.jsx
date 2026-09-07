@@ -15,6 +15,7 @@ import {
 import {
   Mic, MicOff, Video, VideoOff, MonitorUp, MonitorX,
   MessageSquareText, PhoneOff, X, SendHorizontal, Radio, Captions, CaptionsOff,
+  AlertTriangle,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -34,6 +35,7 @@ const STATE_HINT = {
 };
 
 const CAPTION_LINGER_MS = 6000;
+const QUESTION_LIMIT_SECONDS = 120; // 2 minutes per question
 
 function useElapsed() {
   const [seconds, setSeconds] = useState(0);
@@ -42,6 +44,34 @@ function useElapsed() {
     return () => clearInterval(t);
   }, []);
   return seconds;
+}
+
+function useQuestionTimer({ isLive, questionIndex, onTimeout }) {
+  const [secondsLeft, setSecondsLeft] = useState(QUESTION_LIMIT_SECONDS);
+  const onTimeoutRef = useRef(onTimeout);
+  onTimeoutRef.current = onTimeout;
+
+  // Reset to 120s whenever a new question starts
+  useEffect(() => {
+    setSecondsLeft(QUESTION_LIMIT_SECONDS);
+  }, [questionIndex]);
+
+  useEffect(() => {
+    if (!isLive) return;
+    const interval = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          onTimeoutRef.current?.();
+          return QUESTION_LIMIT_SECONDS;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isLive, questionIndex]);
+
+  return secondsLeft;
 }
 
 function formatClock(total) {
@@ -230,7 +260,14 @@ function LiveCaption({ text, visible }) {
   );
 }
 
-export default function VoiceSession({ category, onDisconnect }) {
+export default function VoiceSession({
+  category,
+  onDisconnect,
+  currentQuestionIndex = 1,
+  totalQuestions = 6,
+  onQuestionTimeout,
+  currentPrompt = '',
+}) {
   const session = useSessionContext();
   const { state, audioTrack, agent } = useVoiceAssistant();
   const { isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled } = useLocalParticipant();
@@ -238,6 +275,13 @@ export default function VoiceSession({ category, onDisconnect }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [captionsOn, setCaptionsOn] = useState(true);
   const elapsed = useElapsed();
+
+  const isLive = ['listening', 'thinking', 'speaking'].includes(state);
+  useQuestionTimer({
+    isLive,
+    questionIndex: currentQuestionIndex,
+    onTimeout: onQuestionTimeout,
+  });
 
   const agentIdentity = agent?.identity;
 
@@ -271,7 +315,6 @@ export default function VoiceSession({ category, onDisconnect }) {
 
   const label = STATE_LABEL[state] || 'Connecting';
   const hint = STATE_HINT[state] || 'Take a breath and start when you are ready';
-  const isLive = ['listening', 'thinking', 'speaking'].includes(state);
 
   const endCall = () => {
     try {
@@ -297,12 +340,21 @@ export default function VoiceSession({ category, onDisconnect }) {
       {/* top bar */}
       <header className="relative z-10 flex items-center justify-between px-5 py-4 sm:px-8">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400/80">Communication practice</p>
+          <div className="flex items-center gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400/80">Communication practice</p>
+            <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+              Question {currentQuestionIndex} of {totalQuestions}
+            </span>
+          </div>
           <h2 className="truncate text-sm font-semibold text-slate-200 sm:text-base">{category || 'Practice session'}</h2>
         </div>
-        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300">
-          <Radio className={cn('h-3.5 w-3.5', isLive ? 'text-emerald-400' : 'text-slate-500')} />
-          <span className="tabular-nums">{formatClock(elapsed)}</span>
+
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Overall session elapsed timer */}
+          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300">
+            <Radio className={cn('h-3.5 w-3.5', isLive ? 'text-emerald-400' : 'text-slate-500')} />
+            <span className="font-mono tabular-nums">{formatClock(elapsed)}</span>
+          </div>
         </div>
       </header>
 
@@ -363,6 +415,13 @@ export default function VoiceSession({ category, onDisconnect }) {
               </div>
               <p className="mt-1 text-sm text-slate-400">{hint}</p>
             </div>
+
+            {currentPrompt && (
+              <div className="mx-auto max-w-lg rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-center backdrop-blur-sm">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Question prompt</p>
+                <p className="mt-0.5 line-clamp-2 text-xs text-slate-200 sm:text-sm">{currentPrompt}</p>
+              </div>
+            )}
           </>
         )}
       </div>

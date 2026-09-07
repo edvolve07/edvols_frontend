@@ -1,5 +1,5 @@
 import { Link, usePathname } from "@/src/navigation";
-import { ChevronRight, Headphones, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronRight, Headphones, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import { APP_NAME, NAV_ITEMS } from "@/src/constants";
 import { useAuth } from "@/src/portal/context/AuthContext";
@@ -20,7 +20,7 @@ function clampSidebarWidth(value) {
 export default function Sidebar({ open = false, onClose = () => {}, width = DEFAULT_SIDEBAR_WIDTH, onWidthChange = () => {} }) {
   const path = usePathname();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const compact = width <= COMPACT_THRESHOLD && window.innerWidth >= 1024;
   const userModules = user?.modules_access || ["both"];
   const visibleItems = NAV_ITEMS.filter((item) => {
@@ -50,12 +50,6 @@ export default function Sidebar({ open = false, onClose = () => {}, width = DEFA
     });
     return () => ctx.revert();
   }, [visibleItems, reduced]);
-
-  function handleLogout() {
-    logout();
-    onClose();
-    navigate("/login");
-  }
 
   function updateWidth(nextWidth) {
     onWidthChange(clampSidebarWidth(nextWidth));
@@ -117,16 +111,6 @@ export default function Sidebar({ open = false, onClose = () => {}, width = DEFA
           <Headphones size={16} />
           {!compact && <span>Need Help?</span>}
         </Link>
-
-        <button
-          type="button"
-          onClick={handleLogout}
-          title={compact ? "Logout" : undefined}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-white/15"
-        >
-          <LogOut size={16} />
-          <span className={clsx(compact && "hidden")}>Logout</span>
-        </button>
 
         <button
           type="button"

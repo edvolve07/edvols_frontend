@@ -1,4 +1,4 @@
-import { ChevronDown, Flame, Menu, Search, Sparkles } from "lucide-react";
+import { ChevronDown, Flame, LogOut, Menu, Search, Sparkles } from "lucide-react";
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { PageTransition } from "./animations";
@@ -82,7 +82,7 @@ import ReferralManagement from "./pages/admin/ReferralManagement";
 
 function AppShell({ children }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const pathname = useLocation().pathname;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -95,6 +95,11 @@ function AppShell({ children }) {
   const isAdminRoute = pathname.startsWith("/admin") || pathname.startsWith("/master-admin");
   const isProgrammingRoute = pathname === "/programming" || pathname.startsWith("/programming/");
   const showSearch = isAdminRoute || isProgrammingRoute;
+
+  function handleLogout() {
+    logout();
+    navigate("/login");
+  }
 
   useEffect(() => {
     if (window.innerWidth >= 1024) {
@@ -157,23 +162,35 @@ function AppShell({ children }) {
               <p className="mt-0.5 text-[11px] font-medium text-slate-500">Unified prep workspace</p>
             </div>
 
-            {user?.role !== "admin" && user?.role !== "master_admin" ? (
-              <button className="ml-auto hidden h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 sm:inline-flex">
-                <Flame size={17} className="text-amber-500" />
-                {streak}
-              </button>
-            ) : null}
+            <div className="ml-auto flex items-center gap-2 sm:gap-2.5">
+              {user?.role !== "admin" && user?.role !== "master_admin" ? (
+                <button className="hidden h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 sm:inline-flex">
+                  <Flame size={17} className="text-amber-500" />
+                  {streak}
+                </button>
+              ) : null}
 
-            <button
-              type="button"
-              onClick={() => navigate("/profile")}
-              className="inline-flex shrink-0 items-center gap-3 rounded-xl px-1 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:px-2"
-            >
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-800 text-sm font-bold text-white">
-                {(user?.name || "U").slice(0, 1).toUpperCase()}
-              </span>
-              <span className="hidden max-w-36 truncate sm:inline">{user?.name || "User"}</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => navigate("/profile")}
+                className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:px-3"
+              >
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-800 text-xs font-bold text-white">
+                  {(user?.name || "U").slice(0, 1).toUpperCase()}
+                </span>
+                <span className="hidden max-w-36 truncate sm:inline">{user?.name || "User"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                title="Log out"
+                className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200"
+              >
+                <LogOut size={16} />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            </div>
           </header>
         ) : !isInterviewPage ? (
           <div className="sticky top-0 z-30 flex h-14 items-center gap-2 px-4 sm:px-6 lg:px-10">
@@ -191,16 +208,27 @@ function AppShell({ children }) {
                 {streak}
               </button>
             ) : null}
-            <button
-              type="button"
-              onClick={() => navigate("/profile")}
-              className="ml-auto inline-flex h-10 items-center gap-2 rounded-xl bg-white px-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 sm:px-3"
-            >
-              <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-800 text-xs font-bold text-white">
-                {(user?.name || "U").slice(0, 1).toUpperCase()}
-              </span>
-              <span className="hidden max-w-32 truncate sm:inline">{user?.name || "User"}</span>
-            </button>
+            <div className="ml-auto flex items-center gap-2 sm:gap-2.5">
+              <button
+                type="button"
+                onClick={() => navigate("/profile")}
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-white px-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 sm:px-3"
+              >
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-800 text-xs font-bold text-white">
+                  {(user?.name || "U").slice(0, 1).toUpperCase()}
+                </span>
+                <span className="hidden max-w-32 truncate sm:inline">{user?.name || "User"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                title="Log out"
+                className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-white px-3 text-sm font-semibold text-rose-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-rose-50 hover:text-rose-700 hover:ring-rose-200"
+              >
+                <LogOut size={16} />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            </div>
           </div>
         ) : null}
 

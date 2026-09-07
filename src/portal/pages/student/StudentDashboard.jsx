@@ -76,8 +76,8 @@ export default function StudentDashboard() {
         <div>
           <p className="eyebrow">Student Overview</p>
           <h2 className="mt-2 text-3xl font-black text-slate-900">{greeting}, {firstName}</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-            Track your progress across assessments, interviews, and coding practice.
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+            Consistency is the bridge between preparation and placement. Every practice session compounds into confidence.
           </p>
         </div>
         <div className="flex items-center gap-3">

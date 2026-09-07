@@ -340,6 +340,12 @@ function SessionContent({ mode, category, onComplete, conversationId, initialExc
 
   exchangesRef.current = exchanges;
 
+  useEffect(() => {
+    if (initialExchanges && initialExchanges.length > 0 && exchanges.length === 0) {
+      setExchanges(initialExchanges);
+    }
+  }, [initialExchanges]);
+
   const finalizer = useSessionFinalizer(conversationId, exchangesRef);
   const hasFinalizedRef = useRef(false);
   const syncTimerRef = useRef(null);
@@ -401,7 +407,7 @@ function SessionContent({ mode, category, onComplete, conversationId, initialExc
         const bytes = data instanceof Uint8Array ? data : data?.payload ?? data;
         const payload = JSON.parse(new TextDecoder().decode(bytes));
         if (payload.type === 'evaluation') {
-          setExchanges((prev) => [...prev, {
+          const evalEntry = {
             exchange_number: payload.exchange_number,
             eliciting_prompt: payload.eliciting_prompt,
             transcript: payload.transcript,
@@ -413,7 +419,12 @@ function SessionContent({ mode, category, onComplete, conversationId, initialExc
             is_last: payload.is_last,
             video_context: payload.video_context,
             mode: payload.mode,
-          }]);
+          };
+          setExchanges((prev) => {
+            const next = [...prev, evalEntry];
+            syncExchanges(next);
+            return next;
+          });
         } else if (payload.type === 'complete') {
           triggerFinalization('agent_complete');
         }
@@ -430,9 +441,44 @@ function SessionContent({ mode, category, onComplete, conversationId, initialExc
     triggerFinalization('user_end_call');
   }, [triggerFinalization]);
 
+  const currentQuestionIndex = exchanges.length + 1;
+  const totalQuestions = 6;
+  const currentPrompt = exchanges[exchanges.length - 1]?.next_prompt || '';
+
+  const handleQuestionTimeout = useCallback(() => {
+    const currentQ = exchangesRef.current.length + 1;
+    const isLast = currentQ >= totalQuestions;
+
+    if (room && room.localParticipant) {
+      try {
+        const payload = JSON.stringify({
+          type: 'question_timeout',
+          exchange_number: currentQ,
+          is_last: isLast,
+        });
+        room.localParticipant.publishData(new TextEncoder().encode(payload), { reliable: true });
+      } catch (err) {
+        console.warn('Failed to publish question_timeout:', err);
+      }
+    }
+
+    if (isLast) {
+      triggerFinalization('question_timeout_final');
+    }
+  }, [room, totalQuestions, triggerFinalization]);
+
+  const voiceSessionProps = {
+    category,
+    onDisconnect: handleEndCall,
+    currentQuestionIndex,
+    totalQuestions,
+    onQuestionTimeout: handleQuestionTimeout,
+    currentPrompt,
+  };
+
   if (finalizer.status === 'PROCESSING' || finalizer.status === 'PENDING' || finalizer.status === 'FAILED' || finalizer.status === 'COMPLETED') {
     if (finalizer.status === 'PENDING' && !hasFinalizedRef.current) {
-      return <VoiceSession category={category} onDisconnect={handleEndCall} />;
+      return <VoiceSession {...voiceSessionProps} />;
     }
     return (
       <FinalizingScreen
@@ -444,7 +490,7 @@ function SessionContent({ mode, category, onComplete, conversationId, initialExc
     );
   }
 
-  return <VoiceSession category={category} onDisconnect={handleEndCall} />;
+  return <VoiceSession {...voiceSessionProps} />;
 }
 
 function SessionView({ roomInfo, onComplete, conversationId, initialExchanges }) {
@@ -515,14 +561,21 @@ export default function CommunicationPage() {
       try {
         let convData = null;
         if (parsed.conversationId) {
-          const resp = await apiFetch(`/api/livekit/conversation/${parsed.conversationId}`);
-          if (!resp || resp.status === 'expired' || resp.status === 'ended') {
-            throw new Error('Session expired or ended');
+          try {
+            const resp = await apiFetch(`/api/livekit/conversation/${parsed.conversationId}`);
+            if (resp && (resp.status === 'expired' || resp.status === 'ended')) {
+              throw new Error('Session expired or ended');
+            }
+            convData = resp;
+          } catch (e) {
+            if (e.message?.includes('expired') || e.message?.includes('ended')) {
+              throw e;
+            }
+            console.warn('Conversation fetch failed, continuing to rejoin-room:', e.message);
           }
-          convData = resp;
         }
 
-        const roomName = convData?.room_name || parsed.room;
+        const roomName = convData?.room_name || parsed.room || parsed.conversationId;
         if (!roomName) throw new Error('No room name');
 
         const rejoinData = await apiFetch('/api/livekit/rejoin-room', {
@@ -533,21 +586,32 @@ export default function CommunicationPage() {
           }),
         });
 
-      setConversationId(parsed.conversationId || null);
-      setRoomInfo({
-        room: rejoinData.room,
-        token: rejoinData.token,
-        mode: convData?.mode || parsed.mode || 'general',
-        category: convData?.category || parsed.category || '',
-      });
-      setReconnecting(false);
+        const activeExchanges = (convData?.exchanges && convData.exchanges.length > 0)
+          ? convData.exchanges
+          : (rejoinData.exchanges || []);
 
-      if (convData?.exchanges?.length > 0) {
-        setInitialExchanges(convData.exchanges);
-      } else {
-        setInitialExchanges([]);
-      }
-    } catch (err) {
+        const activeMode = rejoinData.mode || convData?.mode || parsed.mode || 'general';
+        const activeCategory = rejoinData.category || convData?.category || parsed.category || '';
+        const activeConvId = parsed.conversationId || rejoinData.conversation_id || null;
+
+        // Keep localStorage updated with fresh session data for any subsequent refresh
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          room: rejoinData.room,
+          mode: activeMode,
+          category: activeCategory,
+          conversationId: activeConvId,
+        }));
+
+        setConversationId(activeConvId);
+        setInitialExchanges(activeExchanges);
+        setRoomInfo({
+          room: rejoinData.room,
+          token: rejoinData.token,
+          mode: activeMode,
+          category: activeCategory,
+        });
+        setReconnecting(false);
+      } catch (err) {
         console.warn('Reconnection failed, clearing stale session:', err.message);
         localStorage.removeItem(STORAGE_KEY);
         setReconnecting(false);
