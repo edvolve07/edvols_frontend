@@ -7,9 +7,9 @@ import {
   FileText, BarChart3, Brain, Eye, Monitor,
   ClipboardList, Dumbbell, Home, GitCompare,
   Medal, Quote, Mic, Award, Clock, Layers,
-  Volume2, Repeat, PenTool,
+  Volume2, Repeat, PenTool, Loader2,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, downloadCommunicationReportPdf } from '@/lib/api';
 import { useNavigate, Link } from '@/src/navigation';
 import LoadingSkeleton from '@/src/portal/components/LoadingSkeleton';
 
@@ -180,6 +180,7 @@ export default function CommunicationReport({ sessionId: propSessionId, onClose 
   const [report, setReport] = useState(null);
   const [expandedExchange, setExpandedExchange] = useState(null);
   const [expandedSection, setExpandedSection] = useState(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const printRef = useRef(null);
 
   useEffect(() => {
@@ -190,6 +191,20 @@ export default function CommunicationReport({ sessionId: propSessionId, onClose 
     });
   }, [sessionId, navigate, onClose]);
 
+  const handleDownloadPdf = async () => {
+    const targetSessionId = report?.session_id || sessionId;
+    if (!targetSessionId) return;
+    try {
+      setDownloadingPdf(true);
+      await downloadCommunicationReportPdf(targetSessionId);
+    } catch (err) {
+      console.warn('Direct PDF download failed, opening print dialog:', err.message);
+      window.print();
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   if (!report) return <LoadingSkeleton label="Loading coaching report" />;
 
   const s = report.session_summary || {};
@@ -198,9 +213,9 @@ export default function CommunicationReport({ sessionId: propSessionId, onClose 
   const color = LEVEL_COLORS[s.performance_level] || LEVEL_COLORS.Beginner;
 
   return (
-    <div ref={printRef} className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+    <div ref={printRef} className="mx-auto max-w-5xl px-4 py-8 sm:px-6 print:px-0 print:py-0">
       {/* Header */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 print:hidden">
         {onClose ? (
           <button onClick={onClose} className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-700">
             <ArrowLeft className="h-4 w-4" />
@@ -219,8 +234,13 @@ export default function CommunicationReport({ sessionId: propSessionId, onClose 
           <button onClick={() => exportAsJson(report)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
             <Download className="h-3.5 w-3.5" /> JSON
           </button>
-          <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-            <FileText className="h-3.5 w-3.5" /> PDF
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+          >
+            {downloadingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+            {downloadingPdf ? 'Generating PDF...' : 'Download PDF'}
           </button>
         </div>
       </div>

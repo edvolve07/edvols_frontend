@@ -627,4 +627,14 @@ html[data-assessment-fullscreen] .sidebar ~ * {
   #revenue-print td {
     border: 1px solid #e2e8f0 !important;
   }
+  .card,
+  article,
+  .break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  @page {
+    margin: 1.5cm;
+    size: auto;
+  }
 }
