@@ -79,6 +79,8 @@ import SubscriptionBilling from "./pages/SubscriptionBilling";
 import IndividualStudents from "./pages/admin/IndividualStudents";
 import ReferralPage from "./pages/ReferralPage";
 import ReferralManagement from "./pages/admin/ReferralManagement";
+import StudentPlacementProfile from "./pages/placement/StudentPlacementProfile";
+import InstitutionPlacementDashboard from "./pages/placement/InstitutionPlacementDashboard";
 
 function AppShell({ children }) {
   const navigate = useNavigate();
@@ -319,6 +321,9 @@ export default function App() {
         <Route path="/referral" element={<AppShell><ReferralPage /></AppShell>} />
         <Route path="/mentorship" element={<Navigate to="/progress" replace />} />
         <Route path="/help" element={<AppShell><NeedHelpPage /></AppShell>} />
+        <Route element={<RequireRole roles={["student", "individual_student"]} />}>
+          <Route path="/student/placement" element={<AppShell><StudentPlacementProfile /></AppShell>} />
+        </Route>
       </Route>
 
       <Route element={<RequireRole roles={["admin", "master_admin"]} />}>
@@ -328,6 +333,7 @@ export default function App() {
         <Route path="/admin/analytics/interviews" element={<AppShell><AdminInterviewAnalytics /></AppShell>} />
         <Route path="/admin/analytics/communication" element={<AppShell><AdminCommunicationAnalytics /></AppShell>} />
         <Route path="/admin/mentorship" element={<AppShell><MentorshipAdminDashboard /></AppShell>} />
+        <Route path="/admin/placement" element={<AppShell><InstitutionPlacementDashboard /></AppShell>} />
         <Route path="/admin/assessments" element={<AppShell><AdminAssessments /></AppShell>} />
         <Route path="/admin/assessments/create" element={<AppShell><CreateAssessment /></AppShell>} />
         <Route path="/admin/assessments/:id/questions" element={<AppShell><QuestionReview /></AppShell>} />
