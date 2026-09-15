@@ -52,7 +52,7 @@ export default function CompetencyCard({ name, data, showEvidence = false }) {
         <ConfidenceBadge level={confidence} />
       </div>
       <div className="text-3xl font-bold text-gray-900 mb-1">
-        {score > 0 ? score.toFixed(1) : '—'}
+        {dataPoints > 0 && confidence !== 'INSUFFICIENT' ? score.toFixed(1) : 'Not assessed'}
       </div>
       <p className="text-xs text-gray-500 mb-2">
         {dataPoints} data point{dataPoints !== 1 ? 's' : ''}

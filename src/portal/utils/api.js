@@ -12,7 +12,12 @@ export async function apiFetch(path, options = {}) {
   try {
     return await sharedApiFetch(apiPath, options);
   } catch (error) {
-    throw new ApiError(error.message || 'Request failed', error.data?.details || error.data?.detail || null);
+    const wrapped = new ApiError(error.message || 'Request failed', error.data?.details || error.data?.detail || null);
+    wrapped.status = error.status;
+    wrapped.locked = error.locked;
+    wrapped.data = error.data;
+    wrapped.cause = error;
+    throw wrapped;
   }
 }
 

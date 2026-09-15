@@ -1243,7 +1243,8 @@ export default function InterviewPage() {
           session.session_id,
           media.audioBlob,
           media.videoBlob,
-          faceMetrics
+          faceMetrics,
+          questionNumber
         );
         setTranscript(data.transcript ?? "");
         setFeedback(data.feedback ?? "");
@@ -1256,6 +1257,14 @@ export default function InterviewPage() {
           setQuestionNumber(data.question_number ?? questionNumber + 1);
         }
       } catch (err) {
+        if (err.status === 409) {
+          try {
+            const current = await getSessionState(session.session_id);
+            setQuestion(current.question || '');
+            setQuestionNumber(current.question_number);
+            if (['completed', 'ended'].includes(current.status)) setPhase('complete');
+          } catch { /* Keep the original error if session recovery fails. */ }
+        }
         setError(err instanceof Error ? err.message : "Unable to process answer.");
       } finally {
         setLoading(false);

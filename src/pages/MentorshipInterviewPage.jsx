@@ -174,7 +174,7 @@ function LiveInterview({ sessionId, firstQuestion, questionNumber, totalQuestion
       const videoMetrics = videoOn && !faceFailed ? getMetrics() : null;
       const res = await apiFetch("/api/mentorship/interview/answer", {
         method: "POST",
-        body: JSON.stringify({ session_id: sessionId, answer: answer.trim(), video_metrics: videoMetrics }),
+        body: JSON.stringify({ session_id: sessionId, answer: answer.trim(), video_metrics: videoMetrics, question_number: questionNum }),
       });
 
       const metrics = res.metrics || {};
@@ -205,6 +205,13 @@ function LiveInterview({ sessionId, firstQuestion, questionNumber, totalQuestion
       }
       setAnswer("");
     } catch (err) {
+      if (err.status === 409) {
+        try {
+          const current = await apiFetch(`/api/session/${sessionId}`);
+          setCurrentQuestion(current.question || '');
+          setQuestionNum(current.question_number);
+        } catch { /* Keep the original error if session recovery fails. */ }
+      }
       setError(err.message || "Failed to submit answer");
     } finally {
       setSubmitting(false);

@@ -44,7 +44,7 @@ export default function ReadinessBadge({ band, score, showScore = true }) {
       <span className={`text-sm font-semibold ${style.text}`}>
         {style.label}
       </span>
-      {showScore && score != null && (
+      {showScore && band !== 'UNASSESSED' && score != null && (
         <span className={`text-xs font-medium ${style.text} opacity-75`}>
           ({typeof score === 'number' ? score.toFixed(1) : score})
         </span>
