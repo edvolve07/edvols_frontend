@@ -3,8 +3,8 @@ import { Loader2, Target, TrendingUp, Play, FileText, Award, Clock, ArrowRight, 
 import { apiFetch, getSavedResume, saveResume } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 
-const levelColors = ["bg-slate-400", "bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-rose-500"];
-const levelNames = ["Foundation", "Professional", "Advanced", "Expert", "Mentor", "Placement Master"];
+const levelColors = ["bg-blue-500", "bg-emerald-500", "bg-purple-600"];
+const levelNames = ["Foundation", "Skill Development", "Placement Ready"];
 
 export default function MentorshipPage() {
   const navigate = useNavigate();
@@ -18,7 +18,7 @@ export default function MentorshipPage() {
   const [interviews, setInterviews] = useState([]);
   const [comparisons, setComparisons] = useState([]);
   const [lockStatus, setLockStatus] = useState(null);
-  const [accessLevel, setAccessLevel] = useState(6);
+  const [accessLevel, setAccessLevel] = useState(3);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -115,6 +115,28 @@ export default function MentorshipPage() {
       navigate(`/mentorship/interview/${res.session_id}`);
     } catch (err) {
       setError(err.message || "Failed to start interview");
+    } finally {
+      setUploading(false);
+    }
+  }, [navigate]);
+
+  const handleRetakeInterview = useCallback(async (interview) => {
+    const interviewNumber = interview?.number || interview?.interview_number || interview?.interviewNumber;
+    try {
+      setUploading(true);
+      setError(null);
+      if (interviewNumber) {
+        const res = await apiFetch(`/api/mentorship/interview/start/${interviewNumber}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ use_saved: true }),
+        });
+        navigate(`/mentorship/interview/${res.session_id}`);
+      } else {
+        navigate("/interview");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to restart interview");
     } finally {
       setUploading(false);
     }
@@ -348,12 +370,24 @@ export default function MentorshipPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => navigate(`/mentorship/report/${interview.session_id}`)}
-                            className="text-sm font-medium text-brand-600 hover:text-brand-700"
-                          >
-                            View
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleRetakeInterview(interview)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition shadow-xs"
+                              title="Attend this interview again"
+                            >
+                              <RefreshCw className="h-3 w-3" />
+                              Attend Again
+                            </button>
+                            {interview.session_id && (
+                              <button
+                                onClick={() => navigate(`/mentorship/report/${interview.session_id}`)}
+                                className="text-sm font-medium text-slate-600 hover:text-brand-600"
+                              >
+                                View
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

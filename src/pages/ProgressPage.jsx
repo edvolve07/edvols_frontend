@@ -13,9 +13,11 @@ import {
   Star,
   Zap,
   Lock,
+  RefreshCw,
 } from "lucide-react";
 import { usePlacementProgress } from "@/src/hooks/usePlacementProgress";
 import { useNavigate } from "react-router-dom";
+import { apiFetch } from "@/lib/api";
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -42,7 +44,7 @@ class ErrorBoundary extends Component {
   }
 }
 
-const levelColors = ["bg-slate-400", "bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-rose-500"];
+const levelColors = ["bg-blue-500", "bg-emerald-500", "bg-purple-600"];
 
 function formatDate(value) {
   if (!value) return "\u2014";
@@ -74,6 +76,29 @@ function ProgressPageInner() {
   const navigate = useNavigate();
   const { data: p, loading, error } = usePlacementProgress();
   const [now] = useState(Date.now());
+  const [retakingId, setRetakingId] = useState(null);
+
+  const handleRetake = async (iv) => {
+    const interviewNumber = iv.interviewNumber || iv.interview_number;
+    const id = iv.id || iv.sessionId;
+    try {
+      setRetakingId(id);
+      if (interviewNumber) {
+        const res = await apiFetch(`/api/mentorship/interview/start/${interviewNumber}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ use_saved: true }),
+        });
+        navigate(`/mentorship/interview/${res.session_id}`);
+      } else {
+        navigate("/interview");
+      }
+    } catch (_e) {
+      navigate("/interview");
+    } finally {
+      setRetakingId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -162,9 +187,19 @@ function ProgressPageInner() {
               </div>
               <div className="flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center gap-1.5 text-slate-600">
-                  <Award className="h-4 w-4 text-amber-500" />
-                  <span className="font-medium">{completedInterviews}</span> interviews completed
+                  <Award className="h-4 w-4 text-brand-600" />
+                  <span className="font-medium">{p.totalAccessed || p.total_accessed || completedInterviews}</span> interviews accessed
                 </div>
+                <div className="flex items-center gap-1.5 text-slate-600">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <span className="font-medium">{completedInterviews}</span> completed
+                </div>
+                {(p.inProgressInterviews || p.in_progress_interviews) > 0 && (
+                  <div className="flex items-center gap-1.5 text-slate-600">
+                    <Clock className="h-4 w-4 text-amber-500" />
+                    <span className="font-medium">{p.inProgressInterviews || p.in_progress_interviews}</span> in progress
+                  </div>
+                )}
                 <div className="flex items-center gap-1.5 text-slate-600">
                   <TrendingUp className="h-4 w-4 text-emerald-500" />
                   Readiness: <span className="font-medium">{placementReadiness}%</span>
@@ -308,40 +343,82 @@ function ProgressPageInner() {
                       <th className="px-4 py-3 font-medium text-slate-600">Interview</th>
                       <th className="px-4 py-3 font-medium text-slate-600">Date</th>
                       <th className="px-4 py-3 font-medium text-slate-600">Score</th>
-                      <th className="px-4 py-3 font-medium text-slate-600">Grade</th>
-                      <th className="px-4 py-3 font-medium text-slate-600"></th>
+                      <th className="px-4 py-3 font-medium text-slate-600">Status</th>
+                      <th className="px-4 py-3 font-medium text-slate-600 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {recentInterviews.slice(0, 5).map((iv) => (
-                      <tr key={iv.id || iv.sessionId} className="transition hover:bg-slate-50">
-                        <td className="px-4 py-3">
-                          <span className="font-medium text-slate-900">#{iv.interviewNumber || "\u2014"}</span>
-                          {iv.blueprintTitle && <span className="ml-2 text-xs text-slate-500">{iv.blueprintTitle}</span>}
-                        </td>
-                        <td className="px-4 py-3 text-slate-500">
-                          {iv.completedAt ? new Date(iv.completedAt).toLocaleDateString() : "\u2014"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                            (iv.score || 0) >= 80 ? "bg-emerald-50 text-emerald-700"
-                              : (iv.score || 0) >= 60 ? "bg-amber-50 text-amber-700"
-                              : "bg-red-50 text-red-700"
-                          }`}>
-                            {iv.score || 0}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-xs font-medium text-slate-600">{iv.grade || "\u2014"}</td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => navigate("/report", { state: { sessionId: iv.sessionId } })}
-                            className="text-sm font-medium text-brand-600 hover:text-brand-700"
-                          >
-                            View
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {recentInterviews.slice(0, 10).map((iv) => {
+                      const isCompleted = iv.is_completed ?? (
+                        iv.status === "completed" ||
+                        iv.status === "ended" ||
+                        iv.status === "evaluated" ||
+                        Boolean(iv.completedAt || iv.completed_at) ||
+                        Boolean(iv.grade) ||
+                        (iv.score != null && Number(iv.score) > 0)
+                      );
+                      const id = iv.id || iv.sessionId;
+                      const isRetaking = retakingId === id;
+                      return (
+                        <tr key={id} className="transition hover:bg-slate-50">
+                          <td className="px-4 py-3">
+                            <span className="font-medium text-slate-900">#{iv.interviewNumber || "\u2014"}</span>
+                            {iv.blueprintTitle && <span className="ml-2 text-xs text-slate-500">{iv.blueprintTitle}</span>}
+                          </td>
+                          <td className="px-4 py-3 text-slate-500">
+                            {iv.completedAt ? new Date(iv.completedAt).toLocaleDateString() : "\u2014"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                              (iv.score || 0) >= 80 ? "bg-emerald-50 text-emerald-700"
+                                : (iv.score || 0) >= 60 ? "bg-amber-50 text-amber-700"
+                                : iv.score != null ? "bg-red-50 text-red-700"
+                                : "bg-slate-100 text-slate-500"
+                            }`}>
+                              {iv.score != null ? `${iv.score}%` : "—"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center gap-1 text-xs font-medium ${
+                              isCompleted ? "text-emerald-700 bg-emerald-50 border border-emerald-200" : "text-amber-700 bg-amber-50 border border-amber-200"
+                            } px-2 py-0.5 rounded-full`}>
+                              {isCompleted ? (
+                                <>
+                                  <CheckCircle2 className="h-3 w-3" />
+                                  Completed
+                                </>
+                              ) : (
+                                <>
+                                  <Clock className="h-3 w-3" />
+                                  In Progress
+                                </>
+                              )}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleRetake(iv)}
+                                disabled={isRetaking}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition shadow-xs disabled:opacity-50"
+                                title="Attend this interview again"
+                              >
+                                <RefreshCw className={`h-3 w-3 ${isRetaking ? "animate-spin" : ""}`} />
+                                {isRetaking ? "Starting…" : "Attend Again"}
+                              </button>
+                              {iv.sessionId && (
+                                <button
+                                  onClick={() => navigate("/report", { state: { sessionId: iv.sessionId } })}
+                                  className="text-sm font-medium text-slate-600 hover:text-brand-600 transition"
+                                >
+                                  View
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

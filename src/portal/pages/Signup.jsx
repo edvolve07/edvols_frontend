@@ -6,9 +6,9 @@ import { useAuth } from '../context/AuthContext';
 import { openRazorpayCheckout } from '../../../lib/razorpay';
 
 const PLANS = {
-  basic: { name: 'Basic', price: 199, total: 199, interviews: 4, access_level: 1 },
-  advanced: { name: 'Advanced', price: 499, total: 499, interviews: 12, access_level: 3 },
-  professional: { name: 'Professional', price: 849, total: 849, interviews: 24, access_level: 6 },
+  basic: { name: 'Level 1: Foundation', price: 199, total: 199, interviews: 10, access_level: 1 },
+  advanced: { name: 'Level 2: Skill Dev', price: 499, total: 499, interviews: 20, access_level: 2 },
+  professional: { name: 'Level 3: Placement Ready', price: 849, total: 849, interviews: 30, access_level: 3 },
 };
 
 const platformCards = [

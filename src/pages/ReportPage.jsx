@@ -12,6 +12,7 @@ import {
   Target,
   TrendingUp,
   X,
+  RefreshCw,
 } from "lucide-react";
 import {
   Bar,
@@ -28,7 +29,8 @@ import {
 } from "recharts";
 import { METRIC_COLORS, METRIC_LABELS } from "@/src/constants";
 import { useSearchParams } from "@/src/navigation";
-import { downloadReportAtsPdf, downloadReportPdf, getReport } from "@/lib/api";
+import { useLocation, useNavigate } from "react-router-dom";
+import { downloadReportAtsPdf, downloadReportPdf, getReport, apiFetch } from "@/lib/api";
 
 function SectionTitle({ icon: Icon, title }) {
   return (
@@ -113,11 +115,35 @@ function QuestionBreakdownContent({ report }) {
 
 export default function ReportPage({ sessionId: sessionIdOverride, showQuestionBreakdownInline = false }) {
   const params = useSearchParams();
-  const sessionId = sessionIdOverride || params.get("session");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const sessionId = sessionIdOverride || params.get("session") || location?.state?.sessionId;
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(Boolean(sessionId));
+  const [retaking, setRetaking] = useState(false);
   const [error, setError] = useState(sessionId ? "" : "Open a completed interview report from the interview flow.");
   const [showQuestionBreakdown, setShowQuestionBreakdown] = useState(false);
+
+  const handleAttendAgain = async () => {
+    try {
+      setRetaking(true);
+      const interviewNumber = report?.interview_number;
+      if (interviewNumber) {
+        const res = await apiFetch(`/api/mentorship/interview/start/${interviewNumber}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ use_saved: true }),
+        });
+        navigate(`/mentorship/interview/${res.session_id}`);
+      } else {
+        navigate("/interview");
+      }
+    } catch (_e) {
+      navigate("/interview");
+    } finally {
+      setRetaking(false);
+    }
+  };
 
   useEffect(() => {
     if (!sessionId) return;
@@ -199,6 +225,15 @@ export default function ReportPage({ sessionId: sessionIdOverride, showQuestionB
           <h1 className="mt-1 font-display text-3xl font-semibold text-slate-950">Interview report</h1>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleAttendAgain}
+            disabled={retaking}
+            className="inline-flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={retaking ? "animate-spin" : ""} />
+            {retaking ? "Preparing…" : "Attend Again"}
+          </button>
           <button
             type="button"
             onClick={() => downloadReportAtsPdf(report.session_id)}

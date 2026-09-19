@@ -9,12 +9,13 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronUp,
+  RefreshCw,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 
-const levelColors = ["bg-slate-400", "bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-rose-500"];
-const levelNames = ["Foundation", "Professional", "Advanced", "Expert", "Mentor", "Placement Master"];
+const levelColors = ["bg-blue-500", "bg-emerald-500", "bg-purple-500"];
+const levelNames = ["Foundation", "Skill Development", "Placement Ready"];
 
 function formatDate(value) {
   if (!value) return "—";
@@ -43,6 +44,27 @@ export default function InterviewReplayPage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState("");
   const [expandedQuestion, setExpandedQuestion] = useState(null);
+  const [retakingNum, setRetakingNum] = useState(null);
+
+  const handleRetake = async (interviewNumber) => {
+    try {
+      setRetakingNum(interviewNumber);
+      if (interviewNumber) {
+        const res = await apiFetch(`/api/mentorship/interview/start/${interviewNumber}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ use_saved: true }),
+        });
+        navigate(`/mentorship/interview/${res.session_id}`);
+      } else {
+        navigate("/interview");
+      }
+    } catch (_err) {
+      navigate("/interview");
+    } finally {
+      setRetakingNum(null);
+    }
+  };
 
   const fetchReplays = useCallback(async () => {
     try {
@@ -255,11 +277,20 @@ export default function InterviewReplayPage() {
                         </div>
                       )}
 
-                      <div className="mt-4 flex justify-end">
+                      <div className="mt-4 flex justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleRetake(replay.interview_number)}
+                          disabled={retakingNum === replay.interview_number}
+                          className="flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100 disabled:opacity-50 transition"
+                        >
+                          <RefreshCw className={`h-4 w-4 ${retakingNum === replay.interview_number ? "animate-spin" : ""}`} />
+                          {retakingNum === replay.interview_number ? "Starting…" : "Attend Again"}
+                        </button>
                         <button
                           type="button"
                           onClick={() => navigate(`/mentorship/report/${replay.session_id}`)}
-                          className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+                          className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition"
                         >
                           View Full Report
                           <ArrowRight className="h-4 w-4" />

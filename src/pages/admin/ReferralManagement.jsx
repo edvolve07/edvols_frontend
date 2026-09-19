@@ -21,6 +21,15 @@ import {
   Hash,
   ChevronLeft,
   ChevronRight,
+  Sliders,
+  Wallet,
+  IndianRupee,
+  Copy,
+  Check,
+  ShieldCheck,
+  XCircle,
+  Save,
+  RefreshCw,
 } from "lucide-react";
 import {
   getReferralStats,
@@ -30,13 +39,20 @@ import {
   updateReferralCampaign,
   deleteReferralCampaign,
   exportReferralReport,
+  getReferralProgramSettings,
+  updateReferralProgramSettings,
+  getAdminPayoutRequests,
+  processAdminPayout,
 } from "@/lib/api";
 
 function formatDate(value) {
   if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(d);
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(d);
 }
 
 const REWARD_TYPES = [
@@ -66,7 +82,7 @@ const EMPTY_FORM = {
 };
 
 export default function ReferralManagement() {
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState("campaigns"); // "campaigns" | "payouts" | "settings"
   const [stats, setStats] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
   const [campaignTotal, setCampaignTotal] = useState(0);
@@ -82,6 +98,35 @@ export default function ReferralManagement() {
   const [detailCampaign, setDetailCampaign] = useState(null);
   const [detailHistory, setDetailHistory] = useState([]);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // Settings tab state
+  const [settings, setSettings] = useState({
+    referrer_commission_percent: 5,
+    referred_discount_percent: 5,
+    min_referrals_for_withdrawal: 3,
+    is_active: true,
+  });
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsSuccess, setSettingsSuccess] = useState(false);
+
+  // Payouts tab state
+  const [payouts, setPayouts] = useState([]);
+  const [payoutTotal, setPayoutTotal] = useState(0);
+  const [payoutPage, setPayoutPage] = useState(1);
+  const [payoutStatusFilter, setPayoutStatusFilter] = useState("");
+  const [payoutsLoading, setPayoutsLoading] = useState(false);
+  const [copiedUpi, setCopiedUpi] = useState(null);
+
+  // Process Payout Modal state
+  const [processModal, setProcessModal] = useState({
+    open: false,
+    payout: null,
+    status: "completed",
+    utr_number: "",
+    admin_notes: "",
+  });
+  const [processing, setProcessing] = useState(false);
 
   const loadStats = useCallback(async () => {
     try {
@@ -105,10 +150,52 @@ export default function ReferralManagement() {
     }
   }, [campaignPage, search, statusFilter]);
 
+  const loadSettings = useCallback(async () => {
+    setSettingsLoading(true);
+    try {
+      const res = await getReferralProgramSettings();
+      if (res?.settings) {
+        setSettings({
+          referrer_commission_percent: res.settings.referrer_commission_percent ?? 5,
+          referred_discount_percent: res.settings.referred_discount_percent ?? 5,
+          min_referrals_for_withdrawal: res.settings.min_referrals_for_withdrawal ?? 3,
+          is_active: res.settings.is_active ?? true,
+        });
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, []);
+
+  const loadPayouts = useCallback(async () => {
+    setPayoutsLoading(true);
+    try {
+      const params = { page: payoutPage, limit: 15 };
+      if (payoutStatusFilter) params.status = payoutStatusFilter;
+      const data = await getAdminPayoutRequests(params);
+      setPayouts(data.payouts || []);
+      setPayoutTotal(data.total || 0);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPayoutsLoading(false);
+    }
+  }, [payoutPage, payoutStatusFilter]);
+
   useEffect(() => {
     setLoading(true);
     Promise.all([loadStats(), loadCampaigns()]).finally(() => setLoading(false));
   }, [loadStats, loadCampaigns]);
+
+  useEffect(() => {
+    if (tab === "settings") {
+      loadSettings();
+    } else if (tab === "payouts") {
+      loadPayouts();
+    }
+  }, [tab, loadSettings, loadPayouts]);
 
   function openCreate() {
     setForm({ ...EMPTY_FORM });
@@ -213,156 +300,856 @@ export default function ReferralManagement() {
     }
   }
 
+  async function handleSaveSettings(e) {
+    e.preventDefault();
+    setSettingsSaving(true);
+    setSettingsSuccess(false);
+    setError("");
+    try {
+      const res = await updateReferralProgramSettings(settings);
+      if (res?.settings) {
+        setSettings({
+          referrer_commission_percent: res.settings.referrer_commission_percent ?? 5,
+          referred_discount_percent: res.settings.referred_discount_percent ?? 5,
+          min_referrals_for_withdrawal: res.settings.min_referrals_for_withdrawal ?? 3,
+          is_active: res.settings.is_active ?? true,
+        });
+      }
+      setSettingsSuccess(true);
+      setTimeout(() => setSettingsSuccess(false), 4000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSettingsSaving(false);
+    }
+  }
+
+  function openProcessModal(payout) {
+    setProcessModal({
+      open: true,
+      payout,
+      status: "completed",
+      utr_number: payout.utr_number || "",
+      admin_notes: payout.admin_notes || "",
+    });
+  }
+
+  async function handleProcessSubmit(e) {
+    e.preventDefault();
+    if (!processModal.payout) return;
+    if (processModal.status === "completed" && !processModal.utr_number.trim()) {
+      setError("Please enter the Bank / UPI UTR reference number for completed payments.");
+      return;
+    }
+    setProcessing(true);
+    setError("");
+    try {
+      await processAdminPayout(processModal.payout._id, {
+        status: processModal.status,
+        utr_number: processModal.utr_number.trim(),
+        admin_notes: processModal.admin_notes.trim(),
+      });
+      setProcessModal({ open: false, payout: null, status: "completed", utr_number: "", admin_notes: "" });
+      await Promise.all([loadStats(), loadPayouts()]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  function copyToClipboard(text, id) {
+    navigator.clipboard.writeText(text);
+    setCopiedUpi(id);
+    setTimeout(() => setCopiedUpi(null), 2000);
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center text-sm font-medium text-slate-500">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin text-emerald-600" /> Loading...
+        <Loader2 className="mr-2 h-5 w-5 animate-spin text-emerald-600" /> Loading referral module...
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-10 lg:py-7">
-      <section className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Top Header */}
+      <section className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Referral Management</h1>
-          <p className="mt-1.5 text-base text-slate-500">Create campaigns, manage codes, and track referrals.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            Referral & Cashback Management
+          </h1>
+          <p className="mt-1.5 text-base text-slate-500">
+            Configure individual student 5% cashback reward rates, manage UPI payout withdrawals, and track campaigns.
+          </p>
         </div>
-        <div className="flex gap-3">
-          <button onClick={handleExport} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-            <Download className="h-4 w-4" /> Export
-          </button>
-          <button onClick={openCreate} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700">
-            <Plus className="h-4 w-4" /> New Campaign
-          </button>
+        <div className="flex flex-wrap items-center gap-3">
+          {tab === "campaigns" && (
+            <>
+              <button
+                onClick={handleExport}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                <Download className="h-4 w-4" /> Export CSV
+              </button>
+              <button
+                onClick={openCreate}
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+              >
+                <Plus className="h-4 w-4" /> New Campaign
+              </button>
+            </>
+          )}
+          {tab === "payouts" && (
+            <button
+              onClick={loadPayouts}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${payoutsLoading ? "animate-spin" : ""}`} /> Refresh Payouts
+            </button>
+          )}
         </div>
       </section>
 
+      {/* Global Error Banner */}
       {error && (
-        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{error}</div>
+        <div className="mb-6 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button onClick={() => setError("")} className="text-red-500 hover:text-red-700">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       )}
 
+      {/* High-Level Referral Metric Cards */}
       {stats && (
-        <section className="mb-8 grid gap-4 sm:grid-cols-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
-            <div className="flex items-center gap-2 text-slate-400"><BarChart3 className="h-4 w-4" /><span className="text-xs font-semibold uppercase">Campaigns</span></div>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{stats.total_campaigns}</p>
-            <p className="text-xs text-slate-500">{stats.active_codes} active · {stats.expired_codes} expired</p>
+        <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Cashback Paid</span>
+              <span className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
+                <IndianRupee className="h-4 w-4" />
+              </span>
+            </div>
+            <p className="mt-3 text-3xl font-extrabold text-slate-900">
+              ₹{(stats.total_commission_earned || 0).toLocaleString("en-IN")}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Paid out: ₹{(stats.total_payouts_completed || 0).toLocaleString("en-IN")}
+            </p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
-            <div className="flex items-center gap-2 text-emerald-500"><CheckCircle2 className="h-4 w-4" /><span className="text-xs font-semibold uppercase">Successful Referrals</span></div>
-            <p className="mt-2 text-3xl font-bold text-emerald-600">{stats.successful_referrals}</p>
-            <p className="text-xs text-slate-500">Conversion: {stats.conversion_rate}%</p>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Pending UPI Payouts</span>
+              <span className="rounded-lg bg-amber-50 p-2 text-amber-600">
+                <Wallet className="h-4 w-4" />
+              </span>
+            </div>
+            <p className="mt-3 text-3xl font-extrabold text-amber-600">
+              ₹{(stats.total_payouts_pending || 0).toLocaleString("en-IN")}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Awaiting admin approval & transfer
+            </p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
-            <div className="flex items-center gap-2 text-amber-500"><Clock className="h-4 w-4" /><span className="text-xs font-semibold uppercase">Pending Rewards</span></div>
-            <p className="mt-2 text-3xl font-bold text-amber-600">{stats.pending_rewards}</p>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Successful Referrals</span>
+              <span className="rounded-lg bg-blue-50 p-2 text-blue-600">
+                <CheckCircle2 className="h-4 w-4" />
+              </span>
+            </div>
+            <p className="mt-3 text-3xl font-extrabold text-blue-600">{stats.successful_referrals || 0}</p>
+            <p className="mt-1 text-xs text-slate-500">Conversion Rate: {stats.conversion_rate || 0}%</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
-            <div className="flex items-center gap-2 text-violet-500"><Users className="h-4 w-4" /><span className="text-xs font-semibold uppercase">Top Referrer</span></div>
-            <p className="mt-2 text-lg font-bold text-slate-900">{stats.top_referrers?.[0]?.name || "—"}</p>
-            <p className="text-xs text-slate-500">{stats.top_referrers?.[0]?.referral_count || 0} referrals</p>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Top Referrer</span>
+              <span className="rounded-lg bg-violet-50 p-2 text-violet-600">
+                <Users className="h-4 w-4" />
+              </span>
+            </div>
+            <p className="mt-3 truncate text-lg font-bold text-slate-900">
+              {stats.top_referrers?.[0]?.name || "None yet"}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              {stats.top_referrers?.[0]?.referral_count || 0} successful friends referred
+            </p>
           </div>
         </section>
       )}
 
-      <section className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setCampaignPage(1); }}
-            placeholder="Search campaigns..."
-            className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-          />
-        </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setCampaignPage(1); }}
-          className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 focus:border-emerald-400 focus:outline-none"
+      {/* Main Tabs Navigation */}
+      <div className="mb-6 flex border-b border-slate-200">
+        <button
+          onClick={() => setTab("campaigns")}
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-semibold transition ${
+            tab === "campaigns"
+              ? "border-emerald-600 text-emerald-600"
+              : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
+          }`}
         >
-          <option value="">All Status</option>
-          <option value="active">Active</option>
-          <option value="disabled">Disabled</option>
-        </select>
-      </section>
+          <Gift className="h-4 w-4" />
+          Promo Campaigns ({campaignTotal})
+        </button>
 
-      <section className="rounded-xl border border-slate-200 bg-white">
-        {campaigns.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500">No campaigns found.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50">
-                <tr>
-                  <th className="px-4 py-3 font-semibold text-slate-600">Campaign</th>
-                  <th className="px-4 py-3 font-semibold text-slate-600">Code</th>
-                  <th className="px-4 py-3 font-semibold text-slate-600">Type</th>
-                  <th className="px-4 py-3 font-semibold text-slate-600">Reward</th>
-                  <th className="px-4 py-3 font-semibold text-slate-600">Usage</th>
-                  <th className="px-4 py-3 font-semibold text-slate-600">Expiry</th>
-                  <th className="px-4 py-3 font-semibold text-slate-600">Status</th>
-                  <th className="px-4 py-3 font-semibold text-slate-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {campaigns.map((c) => (
-                  <tr key={c._id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-slate-900">{c.name}</p>
-                      <p className="text-xs text-slate-500 truncate max-w-[200px]">{c.description}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="rounded bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">{c.code}</span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-600">{c.code_type}</td>
-                    <td className="px-4 py-3 text-xs text-slate-600">{c.reward_type} ({c.reward_value})</td>
-                    <td className="px-4 py-3 text-xs text-slate-600">
-                      {c.used_count}{c.maximum_usage > 0 ? ` / ${c.maximum_usage}` : ""}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-600">{formatDate(c.expiry_date)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
-                        c.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
-                      }`}>{c.status}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => viewDetail(c._id)} className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" title="View">
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => openEdit(c)} className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" title="Edit">
-                          <Edit3 className="h-4 w-4" />
-                        </button>
-                        {c.code_type !== "user" && (
-                          <button onClick={() => handleDelete(c._id)} className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600" title="Delete">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <button
+          onClick={() => setTab("payouts")}
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-semibold transition ${
+            tab === "payouts"
+              ? "border-emerald-600 text-emerald-600"
+              : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
+          }`}
+        >
+          <Wallet className="h-4 w-4" />
+          UPI Payout Requests
+          {(stats?.total_payouts_pending > 0) && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
+              ₹{stats.total_payouts_pending.toLocaleString("en-IN")} pending
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setTab("settings")}
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-semibold transition ${
+            tab === "settings"
+              ? "border-emerald-600 text-emerald-600"
+              : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
+          }`}
+        >
+          <Sliders className="h-4 w-4" />
+          5% Reward Program Settings
+        </button>
+      </div>
+
+      {/* TAB 1: CAMPAIGNS & PROMO CODES */}
+      {tab === "campaigns" && (
+        <div>
+          <section className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setCampaignPage(1); }}
+                placeholder="Search campaigns by code or name..."
+                className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setCampaignPage(1); }}
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 focus:border-emerald-400 focus:outline-none"
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            {campaigns.length === 0 ? (
+              <div className="p-12 text-center text-sm text-slate-500">No campaigns found matching criteria.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-slate-200 bg-slate-50">
+                    <tr>
+                      <th className="px-5 py-3 font-semibold text-slate-600">Campaign / Code</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">Type</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">Reward Offered</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">Usage</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">Expiry</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">Status</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {campaigns.map((c) => (
+                      <tr key={c._id} className="hover:bg-slate-50/70 transition">
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700 uppercase tracking-wide">
+                              {c.code}
+                            </span>
+                            <span className="font-semibold text-slate-900">{c.name}</span>
+                          </div>
+                          {c.description && (
+                            <p className="mt-0.5 text-xs text-slate-500 truncate max-w-[280px]">{c.description}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-600 capitalize">{c.code_type}</td>
+                        <td className="px-4 py-3 text-xs text-slate-600">
+                          {c.reward_type === "discount_percent" ? `${c.reward_value}% off` : `${c.reward_type} (${c.reward_value})`}
+                        </td>
+                        <td className="px-4 py-3 text-xs font-medium text-slate-700">
+                          {c.used_count}{c.maximum_usage > 0 ? ` / ${c.maximum_usage}` : ""}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-600">{formatDate(c.expiry_date)}</td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                              c.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {c.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              onClick={() => viewDetail(c._id)}
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                              title="View History"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => openEdit(c)}
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                              title="Edit Campaign"
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </button>
+                            {c.code_type !== "user" && (
+                              <button
+                                onClick={() => handleDelete(c._id)}
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {campaignTotal > 15 && (
+              <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3">
+                <span className="text-xs text-slate-500">
+                  Page {campaignPage} of {Math.ceil(campaignTotal / 15)}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCampaignPage((p) => Math.max(1, p - 1))}
+                    disabled={campaignPage === 1}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setCampaignPage((p) => p + 1)}
+                    disabled={campaignPage >= Math.ceil(campaignTotal / 15)}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
+      {/* TAB 2: UPI PAYOUT REQUESTS */}
+      {tab === "payouts" && (
+        <div>
+          {/* Status Filter Bar */}
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex rounded-xl bg-slate-100 p-1">
+              {[
+                { id: "", label: "All Requests" },
+                { id: "pending", label: "Pending Review" },
+                { id: "completed", label: "Completed" },
+                { id: "rejected", label: "Rejected" },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => {
+                    setPayoutStatusFilter(f.id);
+                    setPayoutPage(1);
+                  }}
+                  className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition ${
+                    payoutStatusFilter === f.id
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500">
+              Total payout requests: <span className="font-bold text-slate-800">{payoutTotal}</span>
+            </p>
           </div>
-        )}
-        {campaignTotal > 15 && (
-          <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
-            <span className="text-xs text-slate-500">Page {campaignPage} of {Math.ceil(campaignTotal / 15)}</span>
-            <div className="flex gap-2">
-              <button onClick={() => setCampaignPage(p => Math.max(1, p - 1))} disabled={campaignPage === 1} className="rounded border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button onClick={() => setCampaignPage(p => p + 1)} disabled={campaignPage >= Math.ceil(campaignTotal / 15)} className="rounded border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40">
-                <ChevronRight className="h-4 w-4" />
+
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            {payoutsLoading ? (
+              <div className="flex h-64 items-center justify-center text-sm font-medium text-slate-500">
+                <Loader2 className="mr-2 h-5 w-5 animate-spin text-emerald-600" /> Loading payout requests...
+              </div>
+            ) : payouts.length === 0 ? (
+              <div className="p-12 text-center text-sm text-slate-500">
+                No payout withdrawal requests found under this filter.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-slate-200 bg-slate-50">
+                    <tr>
+                      <th className="px-5 py-3 font-semibold text-slate-600">Student</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">Requested Amount</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">UPI ID (VPA)</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">Requested At</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">Status</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">Bank UTR / Ref</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {payouts.map((p) => (
+                      <tr key={p._id} className="hover:bg-slate-50/70 transition">
+                        <td className="px-5 py-3.5">
+                          <p className="font-semibold text-slate-900">{p.user_name || "Individual Student"}</p>
+                          <p className="text-xs text-slate-500">{p.user_email || "—"}</p>
+                          {p.user_phone && <p className="text-[11px] text-slate-400">{p.user_phone}</p>}
+                        </td>
+                        <td className="px-4 py-3 font-extrabold text-slate-900">
+                          ₹{Number(p.amount).toLocaleString("en-IN")}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="rounded bg-slate-100 px-2 py-1 font-mono text-xs font-semibold text-slate-800">
+                              {p.upi_id}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(p.upi_id, p._id)}
+                              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                              title="Copy UPI ID"
+                            >
+                              {copiedUpi === p._id ? (
+                                <Check className="h-3.5 w-3.5 text-emerald-600" />
+                              ) : (
+                                <Copy className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-600">{formatDate(p.created_at)}</td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                              p.status === "completed"
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : p.status === "rejected"
+                                ? "bg-red-50 text-red-700 border border-red-200"
+                                : "bg-amber-50 text-amber-700 border border-amber-200 animate-pulse"
+                            }`}
+                          >
+                            {p.status === "completed" ? (
+                              <CheckCircle2 className="h-3 w-3" />
+                            ) : p.status === "rejected" ? (
+                              <XCircle className="h-3 w-3" />
+                            ) : (
+                              <Clock className="h-3 w-3" />
+                            )}
+                            <span className="capitalize">{p.status}</span>
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs font-mono text-slate-600">
+                          {p.utr_number || (p.admin_notes ? <span className="italic text-slate-400">{p.admin_notes}</span> : "—")}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {p.status === "pending" ? (
+                            <button
+                              onClick={() => openProcessModal(p)}
+                              className="rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
+                            >
+                              Process UPI
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => openProcessModal(p)}
+                              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                            >
+                              View / Edit
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {payoutTotal > 15 && (
+              <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3">
+                <span className="text-xs text-slate-500">
+                  Page {payoutPage} of {Math.ceil(payoutTotal / 15)}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPayoutPage((p) => Math.max(1, p - 1))}
+                    disabled={payoutPage === 1}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setPayoutPage((p) => p + 1)}
+                    disabled={payoutPage >= Math.ceil(payoutTotal / 15)}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
+      {/* TAB 3: PROGRAM SETTINGS & CONFIGURATION */}
+      {tab === "settings" && (
+        <div className="max-w-3xl space-y-6">
+          <form onSubmit={handleSaveSettings} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-5">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Individual Student Referral Settings</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Customize cashback rates and milestone withdrawal requirements in real time.
+                </p>
+              </div>
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
+                settings.is_active ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-600"
+              }`}>
+                <span className={`h-2 w-2 rounded-full ${settings.is_active ? "bg-emerald-500 animate-ping" : "bg-slate-400"}`} />
+                {settings.is_active ? "Program Live" : "Paused"}
+              </span>
+            </div>
+
+            {settingsSuccess && (
+              <div className="mt-5 flex items-center gap-2 rounded-xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 border border-emerald-200">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                Referral program settings updated successfully. New purchases will immediately use these rates.
+              </div>
+            )}
+
+            <div className="mt-6 space-y-6">
+              {/* Program Active Switch */}
+              <div className="flex items-center justify-between rounded-xl bg-slate-50 p-4">
+                <div>
+                  <label className="text-sm font-bold text-slate-800">Referral Program Status</label>
+                  <p className="text-xs text-slate-500">
+                    Enable or temporarily disable referral discounts and cashback generation across the platform.
+                  </p>
+                </div>
+                <label className="relative inline-flex cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    checked={settings.is_active}
+                    onChange={(e) => setSettings({ ...settings, is_active: e.target.checked })}
+                    className="peer sr-only"
+                  />
+                  <div className="peer h-6 w-11 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-emerald-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none" />
+                </label>
+              </div>
+
+              {/* Grid of 2 percentages */}
+              <div className="grid gap-6 sm:grid-cols-2">
+                {/* Referrer Commission */}
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-bold text-slate-900">Referrer Cashback %</label>
+                    <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">Student A</span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Percentage of the amount paid by the friend credited into the referrer's wallet.
+                  </p>
+                  <div className="mt-3 relative">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={settings.referrer_commission_percent}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          referrer_commission_percent: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="block w-full rounded-xl border border-slate-200 px-4 py-2.5 pr-10 text-base font-bold text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      required
+                    />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400">%</span>
+                  </div>
+                  <p className="mt-2 text-[11px] text-slate-400">Default: 5% of order value</p>
+                </div>
+
+                {/* Referred Discount */}
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-bold text-slate-900">Referred Friend Discount %</label>
+                    <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700">Student B</span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Instant discount applied at checkout when a friend enters a referral code.
+                  </p>
+                  <div className="mt-3 relative">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={settings.referred_discount_percent}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          referred_discount_percent: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="block w-full rounded-xl border border-slate-200 px-4 py-2.5 pr-10 text-base font-bold text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      required
+                    />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400">%</span>
+                  </div>
+                  <p className="mt-2 text-[11px] text-slate-400">Default: 5% off plan price</p>
+                </div>
+              </div>
+
+              {/* Minimum Referrals Milestone */}
+              <div className="rounded-xl border border-slate-200 p-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-bold text-slate-900">
+                    Required Successful Referrals to Unlock Withdrawal
+                  </label>
+                  <span className="rounded bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700">Milestone</span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Students must have at least this many friends who purchased a plan before they can request a UPI bank cashout.
+                  There is no minimum rupee amount restriction once unlocked.
+                </p>
+                <div className="mt-3 relative max-w-[200px]">
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={settings.min_referrals_for_withdrawal}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        min_referrals_for_withdrawal: parseInt(e.target.value) || 1,
+                      })
+                    }
+                    className="block w-full rounded-xl border border-slate-200 px-4 py-2.5 pr-14 text-base font-bold text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    required
+                  />
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">
+                    friends
+                  </span>
+                </div>
+                <p className="mt-2 text-[11px] text-slate-400">Default: 3 paying referrals</p>
+              </div>
+
+              {/* Strict Institutional Isolation Notice */}
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
+                <div className="flex gap-3">
+                  <ShieldCheck className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-emerald-900 leading-relaxed">
+                    <p className="font-bold">Strict Institutional Isolation Active</p>
+                    <p className="mt-0.5 text-emerald-700">
+                      Institution students (<code className="bg-emerald-100/60 px-1 py-0.5 rounded">role: student</code> tied to college batches)
+                      are completely restricted from referral generation, cashback wallets, and discount codes. This program operates purely
+                      for self-paying individual students (<code className="bg-emerald-100/60 px-1 py-0.5 rounded">role: individual_student</code>).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={settingsSaving}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-md transition hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {settingsSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Save Program Settings
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* PROCESS PAYOUT MODAL */}
+      {processModal.open && processModal.payout && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 backdrop-blur-sm p-4"
+          onClick={() => setProcessModal({ open: false, payout: null, status: "completed", utr_number: "", admin_notes: "" })}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <h3 className="text-lg font-bold text-slate-900">Process UPI Payout Withdrawal</h3>
+              <button
+                onClick={() => setProcessModal({ open: false, payout: null, status: "completed", utr_number: "", admin_notes: "" })}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X className="h-5 w-5" />
               </button>
             </div>
-          </div>
-        )}
-      </section>
 
+            {/* Payout Details Card */}
+            <div className="mt-4 rounded-xl bg-slate-50 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Student</span>
+                <span className="text-sm font-bold text-slate-900">{processModal.payout.user_name || "Individual Student"}</span>
+              </div>
+              <div className="mt-1 flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Email</span>
+                <span className="text-xs text-slate-700">{processModal.payout.user_email || "—"}</span>
+              </div>
+              <div className="mt-2.5 flex items-center justify-between border-t border-slate-200/60 pt-2.5">
+                <span className="text-xs font-semibold text-slate-500">Withdrawal Amount</span>
+                <span className="text-xl font-extrabold text-emerald-600">
+                  ₹{Number(processModal.payout.amount).toLocaleString("en-IN")}
+                </span>
+              </div>
+              <div className="mt-2.5 flex items-center justify-between border-t border-slate-200/60 pt-2.5">
+                <span className="text-xs font-semibold text-slate-500">UPI ID (VPA)</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="rounded bg-white px-2 py-0.5 font-mono text-xs font-bold text-slate-900 border border-slate-200">
+                    {processModal.payout.upi_id}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(processModal.payout.upi_id, "modal")}
+                    className="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                  >
+                    {copiedUpi === "modal" ? (
+                      <Check className="h-3.5 w-3.5 text-emerald-600" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleProcessSubmit} className="mt-5 space-y-4">
+              {/* Decision Status */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
+                  Action Status
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setProcessModal({ ...processModal, status: "completed" })}
+                    className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-bold transition ${
+                      processModal.status === "completed"
+                        ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    Mark Transferred
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProcessModal({ ...processModal, status: "rejected" })}
+                    className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-bold transition ${
+                      processModal.status === "rejected"
+                        ? "border-red-600 bg-red-50 text-red-700"
+                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <XCircle className="h-4 w-4 text-red-600" />
+                    Reject Request
+                  </button>
+                </div>
+              </div>
+
+              {processModal.status === "completed" && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Bank UTR / Transaction Reference Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={processModal.utr_number}
+                    onChange={(e) => setProcessModal({ ...processModal, utr_number: e.target.value })}
+                    placeholder="e.g. 409128392102 or UPI Ref ID"
+                    required
+                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-mono focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Provides proof of settlement to the student in their wallet statement.
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {processModal.status === "rejected" ? "Rejection Reason (visible to user)" : "Admin Notes (optional)"}
+                </label>
+                <textarea
+                  value={processModal.admin_notes}
+                  onChange={(e) => setProcessModal({ ...processModal, admin_notes: e.target.value })}
+                  placeholder={
+                    processModal.status === "rejected"
+                      ? "e.g. Invalid UPI ID provided. Please verify your VPA and re-apply."
+                      : "e.g. Processed via HDFC Business UPI"
+                  }
+                  rows={2}
+                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setProcessModal({ open: false, payout: null, status: "completed", utr_number: "", admin_notes: "" })}
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={processing}
+                  className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition disabled:opacity-50 ${
+                    processModal.status === "rejected" ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"
+                  }`}
+                >
+                  {processing && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {processModal.status === "rejected" ? "Confirm Rejection" : "Confirm UPI Settlement"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE / EDIT CAMPAIGN MODAL */}
       {showForm && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 backdrop-blur-sm" onClick={() => setShowForm(false)}>
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -507,6 +1294,7 @@ export default function ReferralManagement() {
         </div>
       )}
 
+      {/* CAMPAIGN DETAIL MODAL */}
       {detailCampaign && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 backdrop-blur-sm" onClick={() => setDetailCampaign(null)}>
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>

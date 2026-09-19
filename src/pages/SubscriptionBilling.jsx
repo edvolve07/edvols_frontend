@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Loader2,
   Crown,
@@ -24,21 +24,17 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { loadRazorpayScript, openRazorpayCheckout, createUpgradePlanKey } from "@/lib/razorpay";
+import { useAuth } from "@/src/portal/context/AuthContext";
 
-const LEVEL_PRICE = 199;
-const BULK_DISCOUNT_THRESHOLD = 2;
-const BULK_DISCOUNT_PERCENT = 25;
+const LEVEL_PRICES = { 1: 199, 2: 499, 3: 849 };
 
 const LEVEL_NAMES = {
   1: "Foundation",
-  2: "Professional Basics",
-  3: "Advanced",
-  4: "Expert",
-  5: "Mentor",
-  6: "Placement Master",
+  2: "Skill Development",
+  3: "Placement Ready",
 };
 
-const LEVEL_INTERVIEWS = { 1: 4, 2: 8, 3: 12, 4: 16, 5: 20, 6: 24 };
+const LEVEL_INTERVIEWS = { 1: 10, 2: 20, 3: 30 };
 
 function formatDate(value) {
   if (!value) return "—";
@@ -49,17 +45,24 @@ function formatDate(value) {
 
 function calcUpgradePreview(currentLevel, targetLevel) {
   if (targetLevel <= currentLevel) return null;
+  const currentPrice = LEVEL_PRICES[currentLevel] || 0;
+  const targetPrice = LEVEL_PRICES[targetLevel] || 849;
+  const upgradeCost = Math.max(0, targetPrice - currentPrice);
   const levelsCount = targetLevel - currentLevel;
-  const basePrice = levelsCount * LEVEL_PRICE;
-  const hasDiscount = levelsCount >= BULK_DISCOUNT_THRESHOLD;
-  const discountAmount = hasDiscount ? Math.round(basePrice * 0.25) : 0;
-  const finalPrice = basePrice - discountAmount;
-  const totalAmount = finalPrice;
-  return { levelsCount, basePrice, hasDiscount, discountAmount, finalPrice, totalAmount };
+  return {
+    levelsCount,
+    basePrice: upgradeCost,
+    hasDiscount: false,
+    discountAmount: 0,
+    finalPrice: upgradeCost,
+    totalAmount: upgradeCost,
+  };
 }
 
 export default function SubscriptionBilling() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
   const [subscription, setSubscription] = useState(null);
   const [journey, setJourney] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -72,6 +75,8 @@ export default function SubscriptionBilling() {
   const [invoiceLoading, setInvoiceLoading] = useState(false);
   const [referralCode, setReferralCode] = useState("");
   const [referralValidation, setReferralValidation] = useState(null);
+
+  const isInstitutional = user?.role === 'student' || subscription?.type === 'institution';
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -96,10 +101,20 @@ export default function SubscriptionBilling() {
   }, [loadData]);
 
   useEffect(() => {
-    if (showUpgrade && subscription) {
-      setTargetLevel(Math.min(subscription.access_level + 1, 6));
+    const target = parseInt(searchParams.get("target") || "", 10);
+    if (target && target >= 2 && target <= 3) {
+      setTargetLevel(target);
+      setShowUpgrade(true);
+    } else if (searchParams.get("upgrade") === "true") {
+      setShowUpgrade(true);
     }
-  }, [showUpgrade, subscription]);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (showUpgrade && subscription && !searchParams.get("target")) {
+      setTargetLevel(Math.min((subscription.access_level || 1) + 1, 3));
+    }
+  }, [showUpgrade, subscription, searchParams]);
 
   async function handleLevelUpgrade() {
     setUpgrading(true);
@@ -240,17 +255,24 @@ export default function SubscriptionBilling() {
               </div>
             </div>
 
-            <div className="mt-5 flex gap-3">
-              <button onClick={() => setShowUpgrade(true)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700">
-                <TrendingUp className="h-4 w-4" /> Upgrade Plan
-              </button>
+            <div className="mt-5 flex items-center gap-3">
+              {!isInstitutional && (
+                <button onClick={() => setShowUpgrade(true)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700">
+                  <TrendingUp className="h-4 w-4" /> Upgrade Plan
+                </button>
+              )}
+              {isInstitutional && (
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3.5 py-2 text-xs font-semibold text-blue-700 border border-blue-200">
+                  Institutional Cohort License Active
+                </span>
+              )}
               <button onClick={() => navigate("/journey")} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                 <Briefcase className="h-4 w-4" /> View Journey
               </button>
             </div>
           </section>
 
-          {showUpgrade && (
+          {showUpgrade && !isInstitutional && (
             <section className="mb-8 rounded-xl border-2 border-emerald-300 bg-white p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -276,8 +298,8 @@ export default function SubscriptionBilling() {
                     <p className="mt-1 text-xs text-slate-500">{LEVEL_INTERVIEWS[targetLevel]} interviews included</p>
                   </div>
                   <button
-                    onClick={() => setTargetLevel(Math.min(6, targetLevel + 1))}
-                    disabled={targetLevel >= 6}
+                    onClick={() => setTargetLevel(Math.min(3, targetLevel + 1))}
+                    disabled={targetLevel >= 3}
                     className="h-10 w-10 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-40"
                   >
                     <ChevronUp size={18} />
@@ -285,7 +307,7 @@ export default function SubscriptionBilling() {
                 </div>
 
                 <div className="mt-4 flex gap-2">
-                  {Array.from({ length: 6 }, (_, i) => i + 1).map((lvl) => {
+                  {Array.from({ length: 3 }, (_, i) => i + 1).map((lvl) => {
                     const unlocked = lvl <= subscription.access_level;
                     const selected = lvl === targetLevel;
                     return (
@@ -299,7 +321,7 @@ export default function SubscriptionBilling() {
                           "bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                         }`}
                       >
-                        {unlocked ? <CheckCircle2 size={14} className="mx-auto" /> : `L${lvl}`}
+                        {unlocked ? <CheckCircle2 size={14} className="mx-auto" /> : `L${lvl} - ${LEVEL_NAMES[lvl]}`}
                       </button>
                     );
                   })}
@@ -312,24 +334,18 @@ export default function SubscriptionBilling() {
                 return (
                   <div className="mt-6 rounded-xl bg-slate-50 p-5">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-600">{preview.levelsCount} level{preview.levelsCount > 1 ? "s" : ""} × ₹{LEVEL_PRICE}</span>
+                      <span className="text-slate-600">
+                        Upgrade from Level {subscription.access_level} ({LEVEL_NAMES[subscription.access_level]}) to Level {targetLevel} ({LEVEL_NAMES[targetLevel]})
+                      </span>
                       <span className="font-medium">₹{preview.basePrice}</span>
                     </div>
-                    {preview.hasDiscount && (
-                      <div className="mt-2 flex items-center justify-between text-sm">
-                        <span className="flex items-center gap-1.5 text-emerald-600 font-semibold">
-                          <Sparkles size={14} /> {BULK_DISCOUNT_PERCENT}% bulk discount ({preview.levelsCount} levels)
-                        </span>
-                        <span className="font-semibold text-emerald-600">-₹{preview.discountAmount}</span>
-                      </div>
-                    )}
-                    <div className="mt-3 border-t border-slate-200 pt-3 flex items-center justify-between">
-                      <span className="text-base font-bold text-slate-900">Total</span>
-                      <span className="text-xl font-bold text-slate-900">₹{preview.totalAmount}</span>
+                    <div className="mt-2 text-xs text-slate-500">
+                      Unlocks interviews {subscription.access_level * 10 + 1}–{targetLevel * 10} ({preview.levelsCount * 10} additional sessions)
                     </div>
-                    {preview.hasDiscount && (
-                      <p className="mt-2 text-xs text-emerald-600 font-medium">You save ₹{preview.discountAmount}!</p>
-                    )}
+                    <div className="mt-3 border-t border-slate-200 pt-3 flex items-center justify-between">
+                      <span className="text-base font-bold text-slate-900">Total Upgrade Amount</span>
+                      <span className="text-xl font-bold text-emerald-700">₹{preview.totalAmount}</span>
+                    </div>
                   </div>
                 );
               })()}
