@@ -11,6 +11,17 @@ export function AuthProvider({ children }) {
   const [revoked, setRevoked] = useState(false);
 
   const refresh = useCallback(async () => {
+    try {
+      if (typeof window !== 'undefined' && window.location?.search) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlToken = urlParams.get('token');
+        if (urlToken) {
+          localStorage.setItem('token', urlToken);
+          localStorage.setItem('auth_token', urlToken);
+        }
+      }
+    } catch (_e) {}
+
     const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
     if (!token) {
       setLoading(false);
