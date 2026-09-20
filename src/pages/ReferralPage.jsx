@@ -58,6 +58,13 @@ export default function ReferralPage() {
         getMyReferral(),
         getReferralHistory(),
       ]);
+      if (refData) {
+        if (refData.referral_link) {
+          refData.referral_link = refData.referral_link.replace("https://edvols.in", "https://app.edvols.in");
+        } else if (refData.code) {
+          refData.referral_link = `https://app.edvols.in/signup?ref=${refData.code}`;
+        }
+      }
       setReferralData(refData);
       setHistory(histData.history || []);
     } catch (err) {
