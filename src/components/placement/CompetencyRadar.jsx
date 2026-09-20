@@ -8,6 +8,7 @@ const COMPETENCY_LABELS = {
   behavioral_skills: 'Behavioral',
   resume_profile: 'Resume',
   interview_performance: 'Interview',
+  aptitude: 'Aptitude',
 };
 
 export default function CompetencyRadar({ competencies, maxScore = 100 }) {
@@ -41,7 +42,7 @@ export default function CompetencyRadar({ competencies, maxScore = 100 }) {
           strokeWidth={2}
         />
         <Tooltip
-          formatter={(value) => [`${value.toFixed(1)}`, 'Score']}
+          formatter={(value) => [`${typeof value === 'number' ? value.toFixed(1) : (value ?? 0)}`, 'Score']}
           contentStyle={{
             backgroundColor: 'white',
             border: '1px solid #e5e7eb',

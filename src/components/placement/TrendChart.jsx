@@ -32,7 +32,7 @@ export default function TrendChart({ trends = [] }) {
         />
         <Tooltip
           formatter={(value, name) => {
-            if (name === 'score') return [`${value.toFixed(1)}%`, 'Score'];
+            if (name === 'score') return [`${typeof value === 'number' ? value.toFixed(1) : value}%`, 'Score'];
             return [value, name];
           }}
           labelFormatter={(label) => `Interview ${label}`}

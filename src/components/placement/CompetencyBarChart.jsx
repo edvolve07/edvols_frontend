@@ -8,6 +8,7 @@ const COMPETENCY_LABELS = {
   behavioral_skills: 'Behavioral',
   resume_profile: 'Resume',
   interview_performance: 'Interview',
+  aptitude: 'Aptitude',
 };
 
 function getBarColor(score) {
@@ -41,7 +42,7 @@ export default function CompetencyBarChart({ competencies }) {
         />
         <Tooltip
           formatter={(value, name) => {
-            if (name === 'score') return [`${value.toFixed(1)}`, 'Score'];
+            if (name === 'score') return [`${typeof value === 'number' ? value.toFixed(1) : value}`, 'Score'];
             return [value, name];
           }}
           contentStyle={{

@@ -6,6 +6,7 @@ const COMPETENCY_LABELS = {
   behavioral_skills: 'Behavioral Skills',
   resume_profile: 'Resume/Profile',
   interview_performance: 'Interview Performance',
+  aptitude: 'Aptitude',
 };
 
 function ConfidenceBadge({ level }) {
@@ -52,7 +53,7 @@ export default function CompetencyCard({ name, data, showEvidence = false }) {
         <ConfidenceBadge level={confidence} />
       </div>
       <div className="text-3xl font-bold text-gray-900 mb-1">
-        {dataPoints > 0 && confidence !== 'INSUFFICIENT' ? score.toFixed(1) : 'Not assessed'}
+        {dataPoints > 0 && confidence !== 'INSUFFICIENT' ? (typeof score === 'number' ? score.toFixed(1) : score) : 'Not assessed'}
       </div>
       <p className="text-xs text-gray-500 mb-2">
         {dataPoints} data point{dataPoints !== 1 ? 's' : ''}

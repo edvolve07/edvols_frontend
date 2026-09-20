@@ -87,7 +87,9 @@ export default function StudentPlacementProfile() {
               </h1>
               <p className="text-sm text-gray-500 mt-1">
                 {student?.email}
+                {student?.targetRole && ` • Target Role: ${student.targetRole}`}
                 {student?.departmentId && ` • Department: ${student.departmentId}`}
+                {student?.collegeName && ` • College: ${student.collegeName}`}
                 {student?.year && ` • Year: ${student.year}`}
               </p>
             </div>
@@ -188,7 +190,7 @@ export default function StudentPlacementProfile() {
                         </span>
                       </div>
                       <p className="text-sm text-blue-700">{rec.suggestion}</p>
-                      <p className="text-xs text-blue-500 mt-1">Target improvement: +{rec.targetImprovement.toFixed(1)} points</p>
+                      <p className="text-xs text-blue-500 mt-1">Target improvement: +{(rec.targetImprovement || 0).toFixed(1)} points</p>
                     </div>
                   ))}
                 </div>
@@ -221,14 +223,14 @@ export default function StudentPlacementProfile() {
                       </tr>
                     </thead>
                     <tbody>
-                      {interviewHistory.map((h, i) => (
-                        <tr key={h.sessionId} className="border-b border-gray-100">
-                          <td className="py-2 px-3 text-gray-600">{i + 1}</td>
+                      {(interviewHistory || []).map((h, i) => (
+                        <tr key={h.sessionId || i} className="border-b border-gray-100">
+                          <td className="py-2 px-3 text-gray-600">{h.interviewNumber || i + 1}</td>
                           <td className="py-2 px-3 text-gray-600">
                             {h.date ? new Date(h.date).toLocaleDateString() : '—'}
                           </td>
                           <td className="py-2 px-3 text-center font-semibold text-gray-800">
-                            {h.percentage?.toFixed(1) || '—'}
+                            {typeof h.percentage === 'number' ? h.percentage.toFixed(1) : (h.percentage || '—')}
                           </td>
                           <td className="py-2 px-3 text-center">
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -237,7 +239,7 @@ export default function StudentPlacementProfile() {
                               h.grade === 'C' ? 'bg-amber-100 text-amber-700' :
                               'bg-red-100 text-red-700'
                             }`}>
-                              {h.grade}
+                              {h.grade || 'N/A'}
                             </span>
                           </td>
                           <td className="py-2 px-3 text-xs text-gray-600 max-w-[200px] truncate">
