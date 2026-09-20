@@ -169,11 +169,27 @@ function PlacementJourneyInner() {
 
   if (!p) return null;
 
+  const LEVEL_PRICES = { 1: 199, 2: 499, 3: 849 };
+
   const {
     currentLevel, currentLevelName, placementReadiness, averageScore,
     completedInterviews, progressPercentage, levels, recentInterviews,
     trends, accessLevel, targetCareerGoal,
   } = p;
+
+  const effectiveAccessLevel = (() => {
+    const sub = p.currentPlan;
+    const k = String(sub?.plan_key || sub?.plan_name || sub?.name || '').toLowerCase();
+    const amt = Number(sub?.amount_paid || sub?.amountPaid) || 0;
+    if (k.includes('pro') || k.includes('placement') || amt >= 700) return 3;
+    if (k.includes('career') || k.includes('advanced') || (amt >= 400 && amt < 700)) return 2;
+    if (k.includes('starter') || k.includes('basic') || (amt >= 150 && amt < 400)) return 1;
+    const raw = Number(accessLevel ?? sub?.accessLevel ?? sub?.access_level) || 0;
+    if (raw === 2) return 2;
+    if (raw === 3) return 3;
+    if (raw === 1) return 1;
+    return raw > 0 ? raw : 1;
+  })();
 
   const maxTrendScore = Math.max(...trends.map((t) => t.score || 0), 1);
 
@@ -383,7 +399,8 @@ function PlacementJourneyInner() {
 
         {/* Next Active Session To Complete (Banner) */}
         {p.nextInterview && (() => {
-          const isNextLockedByTier = accessLevel != null && p.nextInterview.level > accessLevel;
+          const isNextLockedByTier = effectiveAccessLevel != null && p.nextInterview.level > effectiveAccessLevel;
+          const upgradeDiff = effectiveAccessLevel ? Math.max(0, (LEVEL_PRICES[p.nextInterview.level] || 849) - (LEVEL_PRICES[effectiveAccessLevel] || 0)) : (p.nextInterview.level === 2 ? 499 : 849);
           return (
             <section className={`rounded-2xl border-2 p-6 shadow-sm ${
               isNextLockedByTier
@@ -417,7 +434,7 @@ function PlacementJourneyInner() {
                     <h3 className="text-xl font-bold text-slate-900">{p.nextInterview.title}</h3>
                     <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
                       {isNextLockedByTier
-                        ? `You've completed your Level ${accessLevel} journey! Upgrade to Level ${p.nextInterview.level} to unlock Session #${p.nextInterview.interview_number} and all remaining advanced interviews.`
+                        ? `You've completed your Level ${effectiveAccessLevel} journey! Upgrade to Level ${p.nextInterview.level} to unlock Session #${p.nextInterview.interview_number} and all remaining advanced interviews.`
                         : (p.nextInterview.objective || `Focus areas: ${p.nextInterview.focus_areas?.join(", ")}`)}
                     </p>
                   </div>
@@ -429,7 +446,7 @@ function PlacementJourneyInner() {
                     className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 px-6 py-3 text-sm font-bold text-white shadow-md transition hover:shadow-lg whitespace-nowrap cursor-pointer"
                   >
                     <Sparkles className="h-4 w-4" />
-                    Unlock Level {p.nextInterview.level} ({p.nextInterview.level === 2 ? "₹499" : "₹849"})
+                    Unlock Level {p.nextInterview.level} ({upgradeDiff > 0 ? `₹${upgradeDiff} Upgrade` : (p.nextInterview.level === 2 ? "₹499" : "₹849")})
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 ) : (
@@ -464,15 +481,15 @@ function PlacementJourneyInner() {
               <p className="text-xs text-slate-500">3 levels of 10 interviews each with completed, active next, and milestone evaluations</p>
             </div>
             <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-              Level {accessLevel} License
+              Level {effectiveAccessLevel} License
             </span>
           </div>
 
           <div className="flex flex-col gap-4">
             {levels.map((lvl) => {
-              const isActiveLvl = lvl.status === "current";
-              const isCompleted = lvl.status === "completed";
-              const isLocked = lvl.status === "locked";
+              const isLocked = lvl.status === "locked" || (effectiveAccessLevel != null && lvl.id > effectiveAccessLevel);
+              const isActiveLvl = !isLocked && lvl.status === "current";
+              const isCompleted = !isLocked && lvl.status === "completed";
               const milestone = MILESTONES[lvl.id];
               const range = lvl.id === 1 ? '1–10' : lvl.id === 2 ? '11–20' : '21–30';
               const isExpanded = Boolean(expandedLevels[lvl.id]);
@@ -529,8 +546,8 @@ function PlacementJourneyInner() {
                       >
                         <span>
                           {isExpanded
-                            ? (accessLevel != null && lvl.id > accessLevel ? "Hide Preview" : "Hide Sessions")
-                            : (accessLevel != null && lvl.id > accessLevel ? "Preview 10 Sessions" : "View 10 Sessions")}
+                            ? (effectiveAccessLevel != null && lvl.id > effectiveAccessLevel ? "Hide Preview" : "Hide Sessions")
+                            : (effectiveAccessLevel != null && lvl.id > effectiveAccessLevel ? "Preview 10 Sessions" : "View 10 Sessions")}
                         </span>
                         {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       </button>
@@ -538,7 +555,7 @@ function PlacementJourneyInner() {
                   </div>
 
                   {/* Curiosity Unlock Showcase for Unpurchased Level */}
-                  {accessLevel != null && lvl.id > accessLevel && (
+                  {effectiveAccessLevel != null && lvl.id > effectiveAccessLevel && (
                     <div className="mt-4 rounded-xl border border-dashed border-amber-300 bg-gradient-to-br from-amber-50/90 via-white to-orange-50/50 p-5 shadow-xs">
                       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div className="space-y-1.5 flex-1">
@@ -581,7 +598,10 @@ function PlacementJourneyInner() {
                           className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 px-5 py-3 text-xs font-bold text-white shadow-md transition hover:shadow-lg whitespace-nowrap cursor-pointer"
                         >
                           <Sparkles className="h-4 w-4" />
-                          Unlock Level {lvl.id} ({lvl.id === 2 ? "₹499" : "₹849"})
+                          Unlock Level {lvl.id} ({(() => {
+                            const diff = Math.max(0, (LEVEL_PRICES[lvl.id] || 849) - (LEVEL_PRICES[effectiveAccessLevel] || 0));
+                            return diff > 0 ? `₹${diff} Upgrade` : (lvl.id === 2 ? "₹499" : "₹849");
+                          })()})
                           <ArrowRight className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -697,7 +717,7 @@ function PlacementJourneyInner() {
                           );
                         })}
 
-                        {accessLevel != null && lvl.id > accessLevel && (
+                        {effectiveAccessLevel != null && lvl.id > effectiveAccessLevel && (
                           <div className="col-span-full mt-2 rounded-xl border border-dashed border-amber-300 bg-amber-50/60 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                             <div>
                               <p className="text-xs font-bold text-amber-950">
@@ -711,7 +731,10 @@ function PlacementJourneyInner() {
                               onClick={() => navigate(`/subscription?target=${lvl.id}`)}
                               className="text-xs font-bold text-white bg-amber-700 hover:bg-amber-800 px-4 py-2 rounded-lg shadow-xs transition whitespace-nowrap cursor-pointer"
                             >
-                              Unlock Level {lvl.id} ({lvl.id === 2 ? "₹499" : "₹849"})
+                              Unlock Level {lvl.id} ({(() => {
+                                const diff = Math.max(0, (LEVEL_PRICES[lvl.id] || 849) - (LEVEL_PRICES[effectiveAccessLevel] || 0));
+                                return diff > 0 ? `₹${diff} Upgrade` : (lvl.id === 2 ? "₹499" : "₹849");
+                              })()})
                             </button>
                           </div>
                         )}

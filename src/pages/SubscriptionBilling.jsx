@@ -121,6 +121,21 @@ function calcUpgradeDifferential(currentLevel, targetLevel) {
   return Math.max(0, targetPrice - currentPrice);
 }
 
+function getEffectiveAccessLevel(sub, isInst) {
+  if (isInst) return 3;
+  if (!sub) return 0;
+  const k = String(sub.plan_key || sub.plan_name || '').toLowerCase();
+  const amt = Number(sub.amount_paid) || 0;
+  if (['placement_pro', 'professional', 'level_3', 'level_1_3'].includes(k) || amt >= 700) return 3;
+  if (['career', 'advanced', 'level_2', 'level_1_2'].includes(k) || (amt >= 400 && amt < 700)) return 2;
+  if (['starter', 'basic', 'level_1', 'level_1_1'].includes(k) || (amt >= 150 && amt < 400)) return 1;
+  const raw = Number(sub.access_level) || 0;
+  if (raw === 2) return 2;
+  if (raw === 3) return 3;
+  if (raw === 1) return 1;
+  return raw > 0 ? raw : 0;
+}
+
 export default function SubscriptionBilling() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -142,11 +157,11 @@ export default function SubscriptionBilling() {
   const [referralStatus, setReferralStatus] = useState(null);
 
   // Highlighted target from query param
-  const targetParam = parseInt(searchParams.get("target") || "", 10);
+  const targetParam = parseInt(searchParams.get("target") || searchParams.get("target_level") || "", 10);
   const highlightedTarget = targetParam && targetParam >= 2 && targetParam <= 3 ? targetParam : null;
 
   const isInstitutional = user?.role === "student" || subscription?.type === "institution";
-  const currentAccessLevel = isInstitutional ? 3 : Number(subscription?.access_level || 0);
+  const currentAccessLevel = getEffectiveAccessLevel(subscription, isInstitutional);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -359,7 +374,7 @@ export default function SubscriptionBilling() {
   }
 
   const completedCount = journey?.completed_interviews || 0;
-  const totalQuota = subscription?.interviews_total || (currentAccessLevel * 10) || 10;
+  const totalQuota = isInstitutional ? 30 : (currentAccessLevel > 0 ? currentAccessLevel * 10 : (subscription?.interviews_total || 10));
   const quotaPercent = Math.min(100, Math.round((completedCount / totalQuota) * 100));
 
   return (

@@ -175,7 +175,7 @@ function ProgressPageInner() {
               </div>
               <div className="mb-4">
                 <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="font-medium text-slate-700">Progress to Level {Math.min(currentLevel + 1, 6)}</span>
+                  <span className="font-medium text-slate-700">Progress to Level {Math.min(currentLevel + 1, 3)}</span>
                   <span className="text-slate-500">{completedInterviews} / {levels.find(l => l.id === currentLevel + 1)?.requiredInterviews ? levels.find(l => l.id === currentLevel + 1).requiredInterviews + (levels.find(l => l.id === currentLevel)?.requiredInterviews || 0) : "\u2014"}</span>
                 </div>
                 <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
