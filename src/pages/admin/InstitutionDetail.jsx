@@ -129,9 +129,9 @@ function InterviewGapSetting({ institutionId, currentGapDays, onUpdate }) {
 }
 
 const PLAN_PRICE_DEFAULTS = [
-  { key: "basic_price", label: "Basic" },
-  { key: "advanced_price", label: "Advanced" },
-  { key: "professional_price", label: "Professional" },
+  { key: "basic_price", planKey: "starter", label: "Level 1: Foundation (1–10)", defaultPrice: 199 },
+  { key: "advanced_price", planKey: "career", label: "Level 2: Skill Dev (1–20)", defaultPrice: 499 },
+  { key: "professional_price", planKey: "placement_pro", label: "Level 3: Placement Ready (1–30)", defaultPrice: 849 },
 ];
 
 function PricingSetting({ institutionId, pricing, defaults, onUpdate }) {
@@ -162,7 +162,7 @@ function PricingSetting({ institutionId, pricing, defaults, onUpdate }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold text-slate-700">Negotiated Plan Pricing</p>
-          <p className="text-xs text-slate-500">Per-student price charged to this college. Leave blank to use the default.</p>
+          <p className="text-xs text-slate-500">Per-student negotiated price charged to this college. Leave blank to use standard defaults.</p>
         </div>
         <button
           onClick={() => setIsEditing((v) => !v)}
@@ -173,36 +173,42 @@ function PricingSetting({ institutionId, pricing, defaults, onUpdate }) {
         </button>
       </div>
       <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-600">
-        {PLAN_PRICE_DEFAULTS.map(({ key, label }) => (
-          <span key={key}>
-            {label}:{" "}
-            <b className="text-slate-800">
-              {pricing?.[key] != null ? `₹${pricing[key]}` : `₹${defaults?.[key] ?? "—"} (default)`}
-            </b>
-          </span>
-        ))}
+        {PLAN_PRICE_DEFAULTS.map(({ key, label, defaultPrice }) => {
+          const def = defaults?.[key] ?? defaultPrice;
+          return (
+            <span key={key}>
+              {label}:{" "}
+              <b className="text-slate-800">
+                {pricing?.[key] != null ? `₹${pricing[key]} (negotiated)` : `₹${def} (default)`}
+              </b>
+            </span>
+          );
+        })}
       </div>
       {isEditing && (
         <div className="mt-3 space-y-2">
-          {PLAN_PRICE_DEFAULTS.map(({ key, label }) => (
-            <label key={key} className="flex items-center gap-2 text-xs text-slate-600">
-              <span className="w-24 font-medium text-slate-700">{label}</span>
-              <input
-                type="number"
-                min={0}
-                placeholder={`Default ₹${defaults?.[key] ?? ""}`}
-                value={values[key] ?? ""}
-                onChange={(e) =>
-                  setValues((prev) => ({
-                    ...prev,
-                    [key]: e.target.value === "" ? null : Math.max(0, parseInt(e.target.value) || 0),
-                  }))
-                }
-                className="w-28 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm font-medium text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-              <span className="text-slate-400">blank = default ₹{defaults?.[key] ?? ""}</span>
-            </label>
-          ))}
+          {PLAN_PRICE_DEFAULTS.map(({ key, label, defaultPrice }) => {
+            const def = defaults?.[key] ?? defaultPrice;
+            return (
+              <label key={key} className="flex items-center gap-2 text-xs text-slate-600">
+                <span className="w-52 font-medium text-slate-700">{label}</span>
+                <input
+                  type="number"
+                  min={0}
+                  placeholder={`Default ₹${def}`}
+                  value={values[key] ?? ""}
+                  onChange={(e) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      [key]: e.target.value === "" ? null : Math.max(0, parseInt(e.target.value) || 0),
+                    }))
+                  }
+                  className="w-28 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm font-medium text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <span className="text-slate-400">blank = default ₹{def}</span>
+              </label>
+            );
+          })}
           <button
             onClick={handleSave}
             disabled={saving}
@@ -778,15 +784,28 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
     interviews: l.interviews_total,
     description: (l.features || []).join(", "),
   }));
-  const displayPlans = (paidPlans || []).map((p) => ({
-    key: p.key,
-    name: p.name,
-    price: pricing?.[`${p.key}_price`] ?? p.price,
-    negotiated: pricing?.[`${p.key}_price`] != null,
-    access_level: p.access_level,
-    interviews: p.interviews_total,
-    description: (p.features || []).join(", "),
-  }));
+  const displayPlans = (paidPlans || []).map((p) => {
+    const priceKey = {
+      starter: "basic_price",
+      basic: "basic_price",
+      career: "advanced_price",
+      advanced: "advanced_price",
+      placement_pro: "professional_price",
+      professional: "professional_price",
+    }[p.key] || `${p.key}_price`;
+    const isNegotiated = pricing?.[priceKey] != null || pricing?.[`${p.key}_price`] != null;
+    const effectivePrice = pricing?.[priceKey] ?? pricing?.[`${p.key}_price`] ?? p.price;
+    return {
+      key: p.key,
+      name: p.name,
+      price: effectivePrice,
+      originalPrice: p.price,
+      negotiated: isNegotiated,
+      access_level: p.access_level,
+      interviews: p.interviews_total,
+      description: (p.features || []).slice(0, 3).join(" · "),
+    };
+  });
   const [scope, setScope] = useState("institution");
   const [selectedLevels, setSelectedLevels] = useState([]);
   const [selectedDept, setSelectedDept] = useState("");
@@ -833,9 +852,32 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
   });
 
   function toggleLevel(level) {
-    setSelectedLevels((prev) =>
-      prev.includes(level) ? prev.filter((x) => x !== level) : [...prev, level]
-    );
+    setSelectedLevels((prev) => {
+      const next = prev.includes(level) ? prev.filter((x) => x !== level) : [...prev, level];
+      if (next.length > 0) {
+        const max = Math.max(...next);
+        const matchPlan = displayPlans.find((p) => p.access_level === max);
+        if (matchPlan && !selectedPlan) {
+          setSelectedPlan(matchPlan.key);
+        }
+      } else {
+        setSelectedPlan("");
+      }
+      return next;
+    });
+  }
+
+  function handleSelectPlan(planKey) {
+    if (selectedPlan === planKey) {
+      setSelectedPlan("");
+    } else {
+      setSelectedPlan(planKey);
+      const plan = displayPlans.find((p) => p.key === planKey);
+      if (plan) {
+        const levelsUpTo = Array.from({ length: plan.access_level }, (_, i) => i + 1);
+        setSelectedLevels(levelsUpTo);
+      }
+    }
   }
 
   function toggleStudent(id) {
@@ -849,13 +891,20 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
     setResult(null);
     setLogs([]);
     try {
-      if (selectedLevels.length === 0) {
-        setResult({ type: "error", message: "Select at least one level." });
+      let levelsToAssign = selectedLevels;
+      if (levelsToAssign.length === 0 && selectedPlan) {
+        const plan = displayPlans.find((p) => p.key === selectedPlan);
+        if (plan) {
+          levelsToAssign = Array.from({ length: plan.access_level }, (_, i) => i + 1);
+        }
+      }
+      if (levelsToAssign.length === 0) {
+        setResult({ type: "error", message: "Select at least one level or plan." });
         setSaving(false);
         return;
       }
-      const maxLevel = Math.max(...selectedLevels);
-      const levelNames = selectedLevels.sort((a, b) => a - b).map((l) => `L${l}`).join(", ");
+      const maxLevel = Math.max(...levelsToAssign);
+      const levelNames = levelsToAssign.sort((a, b) => a - b).map((l) => `L${l}`).join(", ");
 
       if (scope === "individual") {
         if (selectedStudents.length === 0) {
@@ -874,9 +923,11 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
           });
         }
       } else {
-        const body = { access_level: maxLevel };
-        if (selectedDept) body.department_id = selectedDept;
-        if (selectedYear) body.year = selectedYear;
+        const body = {
+          access_level: maxLevel,
+          department_id: selectedDept || undefined,
+          year: selectedYear || undefined,
+        };
         await apiFetch(`/api/mentorship/admin/journey-access/institution/${institutionId}`, {
           method: "POST",
           body: JSON.stringify(body),
@@ -884,13 +935,17 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
         if (selectedPlan) {
           await apiFetch(`/api/mentorship/admin/subscriptions/institution/${institutionId}`, {
             method: "POST",
-            body: JSON.stringify({ plan_key: selectedPlan }),
+            body: JSON.stringify({
+              plan_key: selectedPlan,
+              department_id: selectedDept || undefined,
+              year: selectedYear || undefined,
+            }),
           });
         }
       }
 
-      const planMsg = selectedPlan ? ` + ${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} plan` : "";
-      setResult({ type: "success", message: `Done! Journey: ${levelNames}${planMsg}` });
+      const planMsg = selectedPlan ? ` + ${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1).replace("_", " ")} plan` : "";
+      setResult({ type: "success", message: `Done! Assigned Journey: ${levelNames}${planMsg}` });
       onAssigned();
       setTimeout(() => onClose(), 1500);
     } catch (err) {
@@ -978,14 +1033,18 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
                   : "border-slate-200 bg-white hover:border-slate-300"
               }`}>
                 <input type="radio" name="sub-plan" checked={selectedPlan === plan.key}
-                  onChange={() => setSelectedPlan(selectedPlan === plan.key ? "" : plan.key)}
+                  onChange={() => handleSelectPlan(plan.key)}
                   className="mt-0.5 h-4 w-4 border-slate-300 text-emerald-600 focus:ring-emerald-500" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-slate-900">{plan.name}</p>
                     <span className="text-sm font-bold text-emerald-600">
                       ₹{plan.price}
-                      {plan.negotiated && <span className="ml-1 text-[10px] font-semibold text-slate-400">per head</span>}
+                      {plan.negotiated ? (
+                        <span className="ml-1.5 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">Negotiated Rate</span>
+                      ) : (
+                        <span className="ml-1 text-[10px] font-semibold text-slate-400">per student</span>
+                      )}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">Level {plan.access_level} · {plan.interviews} interviews</p>
@@ -1096,10 +1155,30 @@ function JourneyAccessAssignModal({ open, onClose, institutionId, departments, s
           <div className="mb-4 rounded-lg bg-brand-50 border border-brand-100 p-3 text-sm">
             <p className="font-semibold text-brand-800">Impact Preview</p>
             <p className="text-xs text-brand-600 mt-1">
-              {impact.total_affected ?? 0} student(s) will be affected.
-              {selectedLevels.length > 0 && <> Up to <strong>Level {Math.max(...selectedLevels)}</strong></>}
-              {selectedPlan && <> · <strong className="capitalize">{selectedPlan}</strong> plan</>}
+              <strong>{impact.total_affected ?? 0} student(s)</strong> will be assigned
+              {selectedLevels.length > 0 && <> up to <strong>Level {Math.max(...selectedLevels)}</strong></>}
+              {selectedPlan && <> with the <strong className="capitalize">{selectedPlan.replace('_', ' ')}</strong> plan</>}.
             </p>
+            {selectedPlan && (
+              <p className="mt-1.5 text-xs font-semibold text-brand-700">
+                Estimated Value: {impact.total_affected ?? 0} students × ₹{displayPlans.find(p => p.key === selectedPlan)?.price || 0} = ₹{(impact.total_affected ?? 0) * (displayPlans.find(p => p.key === selectedPlan)?.price || 0)}
+              </p>
+            )}
+          </div>
+        )}
+        {scope === "individual" && selectedStudents.length > 0 && (
+          <div className="mb-4 rounded-lg bg-brand-50 border border-brand-100 p-3 text-sm">
+            <p className="font-semibold text-brand-800">Impact Preview</p>
+            <p className="text-xs text-brand-600 mt-1">
+              <strong>{selectedStudents.length} student(s)</strong> selected
+              {selectedLevels.length > 0 && <> for <strong>Level {Math.max(...selectedLevels)}</strong></>}
+              {selectedPlan && <> with the <strong className="capitalize">{selectedPlan.replace('_', ' ')}</strong> plan</>}.
+            </p>
+            {selectedPlan && (
+              <p className="mt-1.5 text-xs font-semibold text-brand-700">
+                Estimated Value: {selectedStudents.length} students × ₹{displayPlans.find(p => p.key === selectedPlan)?.price || 0} = ₹{selectedStudents.length * (displayPlans.find(p => p.key === selectedPlan)?.price || 0)}
+              </p>
+            )}
           </div>
         )}
 
@@ -1320,7 +1399,14 @@ export default function InstitutionDetail() {
             <PricingSetting
               institutionId={institution.id}
               pricing={institution.pricing}
-              defaults={Object.fromEntries(catalog.paidPlans.map((p) => [`${p.key}_price`, p.price]))}
+              defaults={{
+                basic_price: catalog.paidPlans.find(p => p.key === 'starter' || p.key === 'basic')?.price || 199,
+                advanced_price: catalog.paidPlans.find(p => p.key === 'career' || p.key === 'advanced')?.price || 499,
+                professional_price: catalog.paidPlans.find(p => p.key === 'placement_pro' || p.key === 'professional')?.price || 849,
+                starter_price: catalog.paidPlans.find(p => p.key === 'starter' || p.key === 'basic')?.price || 199,
+                career_price: catalog.paidPlans.find(p => p.key === 'career' || p.key === 'advanced')?.price || 499,
+                placement_pro_price: catalog.paidPlans.find(p => p.key === 'placement_pro' || p.key === 'professional')?.price || 849,
+              }}
               onUpdate={(newPricing) => setInstitution((prev) => ({ ...prev, pricing: newPricing }))}
             />
           </>
@@ -1434,7 +1520,7 @@ export default function InstitutionDetail() {
               {isMasterAdmin && (
                 <button onClick={() => setShowAssignJourney(true)}
                   className="inline-flex items-center gap-1 rounded-xl bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700">
-                  <Crown size={13} /> Assign Journey Access
+                  <Crown size={13} /> Assign Plan & Access
                 </button>
               )}
               <Link to={`/master-admin/students?institution_id=${id}`}
@@ -1468,6 +1554,10 @@ export default function InstitutionDetail() {
                     {student.subscription?.status === "active" ? (
                       <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700">
                         L{student.subscription.level_access} · {student.subscription.plan_name}
+                      </span>
+                    ) : (student.journey?.journey_access_level || 0) > 0 ? (
+                      <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                        Level {student.journey.journey_access_level} Access
                       </span>
                     ) : (
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-400">
