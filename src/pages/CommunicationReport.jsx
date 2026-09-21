@@ -302,9 +302,10 @@ export default function CommunicationReport({ sessionId: propSessionId, onClose 
         <SectionCard icon={Activity} title="Communication Metrics" subtitle="Detailed evaluation across all dimensions" color="blue" className="mb-6">
           <div className="space-y-2.5">
             {Object.entries(report.communication_metrics).map(([key, val]) => {
-              if (val == null || val.score == null) return null;
+              const score = typeof val === 'object' && val !== null ? val.score : Number(val);
+              if (score == null || isNaN(score)) return null;
               const label = key.replace(/_/g, ' ');
-              return <MetricBar key={key} label={label.charAt(0).toUpperCase() + label.slice(1)} value={val.score} />;
+              return <MetricBar key={key} label={label.charAt(0).toUpperCase() + label.slice(1)} value={Number(score)} />;
             })}
           </div>
         </SectionCard>

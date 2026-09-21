@@ -211,19 +211,21 @@ export const APTITUDE_DOMAINS = {
 };
 
 export const METRIC_LABELS = {
-  confidence: "Confidence",
-  body_language: "Body Language",
+  communication: "Communication Skills",
   knowledge: "Knowledge",
+  confidence: "Confidence",
   fluency: "Fluency",
   skill_relevance: "Relevance",
+  body_language: "Body Language",
 };
 
 export const METRIC_COLORS = {
-  confidence: "#5f6bf3",
-  body_language: "#06b6d4",
+  communication: "#0ea5e9",
   knowledge: "#10b981",
+  confidence: "#5f6bf3",
   fluency: "#f59e0b",
   skill_relevance: "#8b5cf6",
+  body_language: "#06b6d4",
 };
 
 export const COMMUNICATION_MODES = [

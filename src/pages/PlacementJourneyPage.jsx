@@ -100,7 +100,11 @@ function PlacementJourneyInner() {
       const res = await apiFetch(`/api/mentorship/interview/start/${interviewNumber}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ use_saved: true }),
+        body: JSON.stringify({
+          use_saved: true,
+          domain: careerProfile?.stream || careerProfile?.domain || "",
+          role: careerProfile?.target_role || careerProfile?.interested_role || "",
+        }),
       });
       navigate(`/mentorship/interview/${res.session_id}`);
     } catch (_e) {
@@ -658,7 +662,7 @@ function PlacementJourneyInner() {
                                 >
                                   {isIvCompleted ? <Check size={14} /> : `#${iv.interview_number}`}
                                 </div>
-                                <div className="min-w-0">
+                                <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     <p
                                       className={`text-xs font-bold truncate ${
@@ -673,6 +677,11 @@ function PlacementJourneyInner() {
                                       </span>
                                     )}
                                   </div>
+                                  {iv.objective ? (
+                                    <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5" title={iv.objective}>
+                                      {iv.objective}
+                                    </p>
+                                  ) : null}
                                   <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
                                     {isIvCompleted && iv.overall_score != null ? (
                                       <span className="font-bold text-emerald-700">Completed · Score: {iv.overall_score}%</span>
