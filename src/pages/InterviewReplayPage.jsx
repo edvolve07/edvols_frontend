@@ -55,10 +55,12 @@ export default function InterviewReplayPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ use_saved: true }),
         });
-        navigate(`/mentorship/interview/${res.session_id}`);
-      } else {
-        navigate("/interview");
+        if (res?.session_id) {
+          navigate(`/mentorship/interview/${res.session_id}`);
+          return;
+        }
       }
+      navigate("/interview");
     } catch (_err) {
       navigate("/interview");
     } finally {

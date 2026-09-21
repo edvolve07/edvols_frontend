@@ -79,7 +79,7 @@ function ProgressPageInner() {
   const [retakingId, setRetakingId] = useState(null);
 
   const handleRetake = async (iv) => {
-    const interviewNumber = iv.interviewNumber || iv.interview_number;
+    const interviewNumber = iv.interviewNumber || iv.interview_number || iv.number;
     const id = iv.id || iv.sessionId;
     try {
       setRetakingId(id);
@@ -87,12 +87,18 @@ function ProgressPageInner() {
         const res = await apiFetch(`/api/mentorship/interview/start/${interviewNumber}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ use_saved: true }),
+          body: JSON.stringify({
+            use_saved: true,
+            domain: iv.domain || iv.interview_domain || "",
+            role: iv.role || iv.interview_role || "",
+          }),
         });
-        navigate(`/mentorship/interview/${res.session_id}`);
-      } else {
-        navigate("/interview");
+        if (res?.session_id) {
+          navigate(`/mentorship/interview/${res.session_id}`);
+          return;
+        }
       }
+      navigate("/interview");
     } catch (_e) {
       navigate("/interview");
     } finally {

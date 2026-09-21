@@ -319,18 +319,29 @@ export default function ReportPage({ sessionId: sessionIdOverride, showQuestionB
   const handleAttendAgain = async () => {
     try {
       setRetaking(true);
-      const interviewNumber = report?.interview_number;
-      if (interviewNumber) {
-        const res = await apiFetch(`/api/mentorship/interview/start/${interviewNumber}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ use_saved: true }),
-        });
+      const interviewNumber =
+        report?.interview_number ||
+        report?.overall?.interview_number ||
+        report?.blueprint_level ||
+        1;
+      const domain = report?.interview_domain || report?.domain || "";
+      const role = report?.interview_role || report?.role || "";
+      const res = await apiFetch(`/api/mentorship/interview/start/${interviewNumber}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          use_saved: true,
+          domain,
+          role,
+        }),
+      });
+      if (res?.session_id) {
         navigate(`/mentorship/interview/${res.session_id}`);
       } else {
         navigate("/interview");
       }
-    } catch (_e) {
+    } catch (err) {
+      console.error("Retake interview error:", err);
       navigate("/interview");
     } finally {
       setRetaking(false);

@@ -445,10 +445,6 @@ export default function MentorshipInterviewPage() {
       try {
         const res = await apiFetch(`/api/mentorship/journey/interviews`);
         const interview = (res.interviews || []).find((iv) => iv.session_id === sessionId);
-        if (interview && interview.status === "completed") {
-          navigate("/progress");
-          return;
-        }
         if (interview?.title || interview?.blueprint_title) {
           interviewLabel = interview.title || interview.blueprint_title;
         }
@@ -458,21 +454,26 @@ export default function MentorshipInterviewPage() {
 
       try {
         const sessionRes = await apiFetch(`/api/session/${sessionId}`);
-        const firstQuestion = sessionRes?.question ?? sessionRes?.current_question;
-        if (firstQuestion) {
-          const maxQuestions = sessionRes.max_questions ?? 10;
-          setQuestionData({
-            sessionId,
-            firstQuestion,
-            questionNumber: sessionRes.question_number || sessionRes.question_count || 1,
-            totalQuestions: maxQuestions,
-            timeLimitMinutes:
-              sessionRes.time_limit_minutes || Math.ceil(maxQuestions * 3),
-            atsScore: sessionRes.ats_analysis?.ats_score,
-            skillsFound: (sessionRes.ats_analysis?.skills_found || []).slice(0, 5),
-            interviewLabel,
-          });
+        if (sessionRes.status === "completed" || sessionRes.status === "ended") {
+          navigate(`/reports?session=${sessionId}`);
+          return;
         }
+        if (!interviewLabel && (sessionRes.blueprint_title || sessionRes.title)) {
+          interviewLabel = sessionRes.blueprint_title || sessionRes.title;
+        }
+        const firstQuestion = sessionRes?.question ?? sessionRes?.current_question ?? "To begin, tell me about your background and the experiences most relevant to this interview.";
+        const maxQuestions = sessionRes.max_questions ?? 10;
+        setQuestionData({
+          sessionId,
+          firstQuestion,
+          questionNumber: sessionRes.question_number || sessionRes.question_count || 1,
+          totalQuestions: maxQuestions,
+          timeLimitMinutes:
+            sessionRes.time_limit_minutes || Math.ceil(maxQuestions * 3),
+          atsScore: sessionRes.ats_score ?? sessionRes.ats_analysis?.ats_score,
+          skillsFound: sessionRes.skills_found || (sessionRes.ats_analysis?.skills_found || []).slice(0, 5),
+          interviewLabel,
+        });
       } catch (err) {
         setError(err.message || "Failed to load interview session");
       } finally {

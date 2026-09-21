@@ -129,12 +129,18 @@ export default function MentorshipPage() {
         const res = await apiFetch(`/api/mentorship/interview/start/${interviewNumber}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ use_saved: true }),
+          body: JSON.stringify({
+            use_saved: true,
+            domain: interview?.domain || "",
+            role: interview?.role || "",
+          }),
         });
-        navigate(`/mentorship/interview/${res.session_id}`);
-      } else {
-        navigate("/interview");
+        if (res?.session_id) {
+          navigate(`/mentorship/interview/${res.session_id}`);
+          return;
+        }
       }
+      navigate("/interview");
     } catch (err) {
       setError(err.message || "Failed to restart interview");
     } finally {
