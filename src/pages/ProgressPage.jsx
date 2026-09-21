@@ -13,11 +13,9 @@ import {
   Star,
   Zap,
   Lock,
-  RefreshCw,
 } from "lucide-react";
 import { usePlacementProgress } from "@/src/hooks/usePlacementProgress";
 import { useNavigate } from "react-router-dom";
-import { apiFetch } from "@/lib/api";
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -76,35 +74,6 @@ function ProgressPageInner() {
   const navigate = useNavigate();
   const { data: p, loading, error } = usePlacementProgress();
   const [now] = useState(Date.now());
-  const [retakingId, setRetakingId] = useState(null);
-
-  const handleRetake = async (iv) => {
-    const interviewNumber = iv.interviewNumber || iv.interview_number || iv.number;
-    const id = iv.id || iv.sessionId;
-    try {
-      setRetakingId(id);
-      if (interviewNumber) {
-        const res = await apiFetch(`/api/mentorship/interview/start/${interviewNumber}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            use_saved: true,
-            domain: iv.domain || iv.interview_domain || "",
-            role: iv.role || iv.interview_role || "",
-          }),
-        });
-        if (res?.session_id) {
-          navigate(`/mentorship/interview/${res.session_id}`);
-          return;
-        }
-      }
-      navigate("/interview");
-    } catch (_e) {
-      navigate("/interview");
-    } finally {
-      setRetakingId(null);
-    }
-  };
 
   if (loading) {
     return (
@@ -364,7 +333,6 @@ function ProgressPageInner() {
                         (iv.score != null && Number(iv.score) > 0)
                       );
                       const id = iv.id || iv.sessionId;
-                      const isRetaking = retakingId === id;
                       return (
                         <tr key={id} className="transition hover:bg-slate-50">
                           <td className="px-4 py-3">
@@ -403,19 +371,10 @@ function ProgressPageInner() {
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => handleRetake(iv)}
-                                disabled={isRetaking}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition shadow-xs disabled:opacity-50"
-                                title="Attend this interview again"
-                              >
-                                <RefreshCw className={`h-3 w-3 ${isRetaking ? "animate-spin" : ""}`} />
-                                {isRetaking ? "Starting…" : "Attend Again"}
-                              </button>
                               {iv.sessionId && (
                                 <button
                                   onClick={() => navigate("/report", { state: { sessionId: iv.sessionId } })}
-                                  className="text-sm font-medium text-slate-600 hover:text-brand-600 transition"
+                                  className="text-sm font-semibold text-brand-600 hover:text-brand-700 transition"
                                 >
                                   View
                                 </button>

@@ -70,8 +70,6 @@ function formatDateTime(value) {
 function PlacementJourneyInner() {
   const navigate = useNavigate();
   const { data: p, loading, error } = usePlacementProgress();
-  const [retakingId, setRetakingId] = useState(null);
-  const [startingInterviewNumber, setStartingInterviewNumber] = useState(null);
   const [expandedLevels, setExpandedLevels] = useState({});
   const [careerProfile, setCareerProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -94,23 +92,11 @@ function PlacementJourneyInner() {
     }));
   };
 
-  const handleStartSession = async (interviewNumber) => {
-    try {
-      setStartingInterviewNumber(interviewNumber);
-      const res = await apiFetch(`/api/mentorship/interview/start/${interviewNumber}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          use_saved: true,
-          domain: careerProfile?.stream || careerProfile?.domain || "",
-          role: careerProfile?.target_role || careerProfile?.interested_role || "",
-        }),
-      });
-      navigate(`/mentorship/interview/${res.session_id}`);
-    } catch (_e) {
+  const handleStartSession = (interviewNumber, isRetake = false) => {
+    if (isRetake && interviewNumber) {
+      navigate(`/interview?retake=${interviewNumber}`);
+    } else {
       navigate("/interview");
-    } finally {
-      setStartingInterviewNumber(null);
     }
   };
 
@@ -131,31 +117,12 @@ function PlacementJourneyInner() {
     loadCareerProfile();
   }, []);
 
-  const handleRetake = async (iv) => {
+  const handleRetake = (iv) => {
     const interviewNumber = iv.interviewNumber || iv.interview_number || iv.number;
-    const id = iv.id || iv.sessionId;
-    try {
-      setRetakingId(id);
-      if (interviewNumber) {
-        const res = await apiFetch(`/api/mentorship/interview/start/${interviewNumber}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            use_saved: true,
-            domain: careerProfile?.stream || careerProfile?.domain || iv.domain || "",
-            role: careerProfile?.target_role || careerProfile?.interested_role || iv.role || "",
-          }),
-        });
-        if (res?.session_id) {
-          navigate(`/mentorship/interview/${res.session_id}`);
-          return;
-        }
-      }
+    if (interviewNumber) {
+      navigate(`/interview?retake=${interviewNumber}`);
+    } else {
       navigate("/interview");
-    } catch (_e) {
-      navigate("/interview");
-    } finally {
-      setRetakingId(null);
     }
   };
 
@@ -703,16 +670,14 @@ function PlacementJourneyInner() {
                               <div className="flex items-center gap-1.5 flex-shrink-0">
                                 {isIvCompleted ? (
                                   <button
-                                    disabled={startingInterviewNumber != null}
-                                    onClick={() => handleStartSession(iv.interview_number)}
+                                    onClick={() => handleStartSession(iv.interview_number, true)}
                                     className="text-[11px] font-bold text-emerald-700 bg-white border border-emerald-300 hover:bg-emerald-50 px-2.5 py-1 rounded-md transition cursor-pointer"
                                   >
                                     Retake
                                   </button>
                                 ) : isIvNext ? (
                                   <button
-                                    disabled={startingInterviewNumber != null}
-                                    onClick={() => handleStartSession(iv.interview_number)}
+                                    onClick={() => handleStartSession(iv.interview_number, false)}
                                     className="flex items-center gap-1 text-[11px] font-bold text-white bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded-md shadow-xs transition cursor-pointer"
                                   >
                                     <Play size={10} className="fill-white" />
@@ -859,12 +824,11 @@ function PlacementJourneyInner() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleRetake(iv)}
-                      disabled={retakingId === (iv.id || iv.sessionId)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition shadow-xs disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition shadow-xs cursor-pointer"
                       title="Attend this interview again"
                     >
-                      <RefreshCw className={`h-3 w-3 ${retakingId === (iv.id || iv.sessionId) ? "animate-spin" : ""}`} />
-                      {retakingId === (iv.id || iv.sessionId) ? "Starting…" : "Attend Again"}
+                      <RefreshCw className="h-3 w-3" />
+                      Attend Again
                     </button>
                     <button
                       onClick={() => navigate("/report", { state: { sessionId: iv.sessionId } })}

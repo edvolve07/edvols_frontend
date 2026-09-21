@@ -120,31 +120,12 @@ export default function MentorshipPage() {
     }
   }, [navigate]);
 
-  const handleRetakeInterview = useCallback(async (interview) => {
+  const handleRetakeInterview = useCallback((interview) => {
     const interviewNumber = interview?.number || interview?.interview_number || interview?.interviewNumber;
-    try {
-      setUploading(true);
-      setError(null);
-      if (interviewNumber) {
-        const res = await apiFetch(`/api/mentorship/interview/start/${interviewNumber}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            use_saved: true,
-            domain: interview?.domain || "",
-            role: interview?.role || "",
-          }),
-        });
-        if (res?.session_id) {
-          navigate(`/mentorship/interview/${res.session_id}`);
-          return;
-        }
-      }
+    if (interviewNumber) {
+      navigate(`/interview?retake=${interviewNumber}`);
+    } else {
       navigate("/interview");
-    } catch (err) {
-      setError(err.message || "Failed to restart interview");
-    } finally {
-      setUploading(false);
     }
   }, [navigate]);
 

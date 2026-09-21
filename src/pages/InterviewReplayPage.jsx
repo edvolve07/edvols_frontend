@@ -44,27 +44,12 @@ export default function InterviewReplayPage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState("");
   const [expandedQuestion, setExpandedQuestion] = useState(null);
-  const [retakingNum, setRetakingNum] = useState(null);
 
-  const handleRetake = async (interviewNumber) => {
-    try {
-      setRetakingNum(interviewNumber);
-      if (interviewNumber) {
-        const res = await apiFetch(`/api/mentorship/interview/start/${interviewNumber}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ use_saved: true }),
-        });
-        if (res?.session_id) {
-          navigate(`/mentorship/interview/${res.session_id}`);
-          return;
-        }
-      }
+  const handleRetake = (interviewNumber) => {
+    if (interviewNumber) {
+      navigate(`/interview?retake=${interviewNumber}`);
+    } else {
       navigate("/interview");
-    } catch (_err) {
-      navigate("/interview");
-    } finally {
-      setRetakingNum(null);
     }
   };
 
@@ -283,11 +268,10 @@ export default function InterviewReplayPage() {
                         <button
                           type="button"
                           onClick={() => handleRetake(replay.interview_number)}
-                          disabled={retakingNum === replay.interview_number}
-                          className="flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100 disabled:opacity-50 transition"
+                          className="flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100 transition cursor-pointer"
                         >
-                          <RefreshCw className={`h-4 w-4 ${retakingNum === replay.interview_number ? "animate-spin" : ""}`} />
-                          {retakingNum === replay.interview_number ? "Starting…" : "Attend Again"}
+                          <RefreshCw className="h-4 w-4" />
+                          Attend Again
                         </button>
                         <button
                           type="button"

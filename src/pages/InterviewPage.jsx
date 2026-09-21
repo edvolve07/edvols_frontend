@@ -17,6 +17,7 @@ import {
   MessageSquare,
   Mic,
   Mic2,
+  Play,
   RotateCcw,
   Send,
   Sparkles,
@@ -29,6 +30,7 @@ import {
   Video,
   VideoOff,
 } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import clsx from "clsx";
 import { DOMAIN_ROLES, INTERVIEW_DOMAINS, INTERVIEW_ROLES, METRIC_COLORS, METRIC_LABELS } from "@/src/constants";
 import { useNavigate } from "@/src/navigation";
@@ -61,6 +63,8 @@ function mapStreamToDomain(stream) {
 }
 
 function SetupForm({ onStart }) {
+  const [searchParams] = useSearchParams();
+  const retakeParam = searchParams.get("retake");
   const [domain, setDomain] = useState(INTERVIEW_DOMAINS[0]);
   const [role, setRole] = useState(DOMAIN_ROLES[INTERVIEW_DOMAINS[0]][0]);
   const [customRole, setCustomRole] = useState("");
@@ -72,13 +76,29 @@ function SetupForm({ onStart }) {
   const [savedResume, setSavedResume] = useState(null);
   const [useSaved, setUseSaved] = useState(false);
   const [nextInterview, setNextInterview] = useState(null);
+  const [interviewMode, setInterviewMode] = useState(retakeParam ? "retake" : "current");
+  const [selectedRetakeNum, setSelectedRetakeNum] = useState(retakeParam ? Number(retakeParam) : null);
+
+  useEffect(() => {
+    if (retakeParam) {
+      setInterviewMode("retake");
+      setSelectedRetakeNum(Number(retakeParam));
+    }
+  }, [retakeParam]);
 
   useEffect(() => {
     getSavedResume().then((res) => {
       if (res?.hasSaved) setSavedResume(res);
     }).catch(() => {});
 
-    getNextInterview().then(setNextInterview).catch(() => {});
+    getNextInterview().then((res) => {
+      setNextInterview(res);
+      if (retakeParam) {
+        setSelectedRetakeNum(Number(retakeParam));
+      } else if (res?.retake_options?.length > 0 && !selectedRetakeNum) {
+        setSelectedRetakeNum(res.retake_options[0].interview_number);
+      }
+    }).catch(() => {});
 
     apiFetch("/api/auth/me")
       .then((res) => {
@@ -99,9 +119,19 @@ function SetupForm({ onStart }) {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [retakeParam]);
 
   const domainRoles = DOMAIN_ROLES[domain] ?? [];
+
+  const retakeOptions = nextInterview?.retake_options || [];
+  const selectedRetakeInterview = retakeOptions.find(
+    (opt) => opt.interview_number === (selectedRetakeNum || retakeOptions[0]?.interview_number)
+  ) || retakeOptions[0];
+
+  const isRetakeMode = interviewMode === "retake" && retakeOptions.length > 0;
+  const activeInterview = isRetakeMode && selectedRetakeInterview
+    ? selectedRetakeInterview
+    : nextInterview;
 
   function handleDomainClick(item) {
     setDomain(item);
@@ -130,7 +160,10 @@ function SetupForm({ onStart }) {
     setLoading(true);
     setError("");
     try {
-      await onStart(domain, role, useSaved ? null : file, useSaved);
+      const interviewNumberToStart = isRetakeMode && activeInterview
+        ? activeInterview.interview_number
+        : (nextInterview?.interview_number || null);
+      await onStart(domain, role, useSaved ? null : file, useSaved, interviewNumberToStart);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to start interview.");
     } finally {
@@ -140,38 +173,143 @@ function SetupForm({ onStart }) {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
-      {nextInterview && (
-        <div className="mb-6 overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-[0_0_0_1px_rgba(5,150,105,0.25),0_0_28px_rgba(5,150,105,0.15)]">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-100 px-5 py-3.5">
-            <p className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500 text-white">
-                <Mic2 size={15} />
-              </span>
-              {nextInterview.all_completed ? "All interviews completed" : `Interview ${nextInterview.interview_number} — ${nextInterview.title}`}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-lg border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-                Level {nextInterview.level} · {nextInterview.difficulty}
-              </span>
-              {!nextInterview.all_completed && (
-                <span className="rounded-lg border border-slate-100 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500">
-                  {nextInterview.completed_interviews} of {nextInterview.total_interviews} completed
-                </span>
+      {activeInterview && (
+        <div className="mb-6 space-y-3">
+          {/* Mode Selector: Current Interview vs Retake */}
+          {retakeOptions.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="inline-flex rounded-xl bg-slate-100 p-1">
+                <button
+                  type="button"
+                  onClick={() => setInterviewMode("current")}
+                  className={clsx(
+                    "flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer",
+                    !isRetakeMode
+                      ? "bg-white text-emerald-700 shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  )}
+                >
+                  <Sparkles size={13} className={!isRetakeMode ? "text-emerald-600" : ""} />
+                  Current Interview (#{nextInterview?.interview_number})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInterviewMode("retake");
+                    if (!selectedRetakeNum && retakeOptions[0]) {
+                      setSelectedRetakeNum(retakeOptions[0].interview_number);
+                    }
+                  }}
+                  className={clsx(
+                    "flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer",
+                    isRetakeMode
+                      ? "bg-white text-brand-700 shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  )}
+                >
+                  <RotateCcw size={13} className={isRetakeMode ? "text-brand-600" : ""} />
+                  Retake Interview ({retakeOptions.length} completed)
+                </button>
+              </div>
+
+              {isRetakeMode && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-medium text-slate-500 whitespace-nowrap">
+                    Select interview:
+                  </label>
+                  <select
+                    value={activeInterview?.interview_number || ""}
+                    onChange={(e) => setSelectedRetakeNum(Number(e.target.value))}
+                    className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer"
+                  >
+                    {retakeOptions.map((opt) => (
+                      <option key={opt.interview_number} value={opt.interview_number}>
+                        Interview #{opt.interview_number}: {opt.title} (Level {opt.level}{opt.score != null ? ` · Score: ${opt.score}%` : ""})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
             </div>
-          </div>
-          {!nextInterview.all_completed && (
-            <div className="px-5 py-3.5">
-              <p className="text-sm leading-6 text-emerald-900/80">{nextInterview.objective}</p>
-              <div className="mt-2.5 flex flex-wrap gap-1.5">
-                {(nextInterview.focus_areas || []).map((area) => (
-                  <span key={area} className="rounded-lg border border-slate-100 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">
-                    {area}
+          )}
+
+          {/* Active Interview Banner */}
+          <div className={clsx(
+            "overflow-hidden rounded-2xl border bg-white transition-all",
+            isRetakeMode
+              ? "border-brand-200 shadow-[0_0_0_1px_rgba(99,102,241,0.25),0_0_28px_rgba(99,102,241,0.15)]"
+              : "border-emerald-200 shadow-[0_0_0_1px_rgba(5,150,105,0.25),0_0_28px_rgba(5,150,105,0.15)]"
+          )}>
+            <div className={clsx(
+              "flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3.5",
+              isRetakeMode ? "border-brand-100 bg-brand-50/50" : "border-emerald-100"
+            )}>
+              <div className="flex items-center gap-2.5">
+                <span className={clsx(
+                  "flex h-7 w-7 items-center justify-center rounded-lg text-white",
+                  isRetakeMode ? "bg-brand-600" : "bg-emerald-500"
+                )}>
+                  {isRetakeMode ? <RotateCcw size={15} /> : <Mic2 size={15} />}
+                </span>
+                <div className="flex items-center gap-2">
+                  <p className={clsx(
+                    "text-sm font-semibold",
+                    isRetakeMode ? "text-brand-950" : "text-emerald-900"
+                  )}>
+                    {isRetakeMode
+                      ? `Retake: Interview ${activeInterview.interview_number} — ${activeInterview.title}`
+                      : (nextInterview?.all_completed
+                          ? "All interviews completed"
+                          : `Interview ${activeInterview.interview_number} — ${activeInterview.title}`
+                        )
+                    }
+                  </p>
+                  {isRetakeMode && (
+                    <span className="rounded-md bg-brand-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-800">
+                      Retake Mode
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={clsx(
+                  "rounded-lg border px-2.5 py-1 text-[11px] font-semibold",
+                  isRetakeMode
+                    ? "border-brand-200 bg-brand-50 text-brand-700"
+                    : "border-emerald-100 bg-emerald-50 text-emerald-700"
+                )}>
+                  Level {activeInterview.level} · {activeInterview.difficulty}
+                </span>
+                {!isRetakeMode && !nextInterview?.all_completed && (
+                  <span className="rounded-lg border border-slate-100 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500">
+                    {nextInterview?.completed_interviews} of {nextInterview?.total_interviews} completed
                   </span>
-                ))}
+                )}
+                {isRetakeMode && activeInterview.score != null && (
+                  <span className="rounded-lg border border-brand-100 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700">
+                    Previous Score: {activeInterview.score}%
+                  </span>
+                )}
               </div>
             </div>
-          )}
+            {(!nextInterview?.all_completed || isRetakeMode) && (
+              <div className="px-5 py-3.5">
+                <p className={clsx(
+                  "text-sm leading-6",
+                  isRetakeMode ? "text-brand-950/80" : "text-emerald-900/80"
+                )}>
+                  {activeInterview.objective}
+                </p>
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {(activeInterview.focus_areas || []).map((area) => (
+                    <span key={area} className="rounded-lg border border-slate-100 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                      {area}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -324,7 +462,7 @@ function SetupForm({ onStart }) {
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-4 text-sm font-semibold text-white shadow-card transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <Mic2 size={18} />}
-            {loading ? "Analyzing resume" : "Start interview"}
+            {loading ? "Analyzing resume" : isRetakeMode ? `Retake Interview #${activeInterview?.interview_number}` : "Start interview"}
           </button>
         </aside>
       </div>
@@ -1204,8 +1342,8 @@ export default function InterviewPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleStart(domain, role, file, useSaved = false) {
-    const data = await startInterview(domain, role, file, useSaved);
+  async function handleStart(domain, role, file, useSaved = false, interviewNumber = null) {
+    const data = await startInterview(domain, role, file, useSaved, interviewNumber);
     try {
       await apiFetch("/api/auth/profile/targeting", {
         method: "PATCH",

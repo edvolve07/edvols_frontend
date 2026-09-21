@@ -14,6 +14,7 @@ import {
   X,
   RefreshCw,
   Award,
+  RotateCcw,
 } from "lucide-react";
 import {
   Bar,
@@ -312,40 +313,16 @@ export default function ReportPage({ sessionId: sessionIdOverride, showQuestionB
   const sessionId = sessionIdOverride || params.get("session") || location?.state?.sessionId;
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(Boolean(sessionId));
-  const [retaking, setRetaking] = useState(false);
   const [error, setError] = useState(sessionId ? "" : "Open a completed interview report from the interview flow.");
   const [showQuestionBreakdown, setShowQuestionBreakdown] = useState(false);
 
-  const handleAttendAgain = async () => {
-    try {
-      setRetaking(true);
-      const interviewNumber =
-        report?.interview_number ||
-        report?.overall?.interview_number ||
-        report?.blueprint_level ||
-        1;
-      const domain = report?.interview_domain || report?.domain || "";
-      const role = report?.interview_role || report?.role || "";
-      const res = await apiFetch(`/api/mentorship/interview/start/${interviewNumber}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          use_saved: true,
-          domain,
-          role,
-        }),
-      });
-      if (res?.session_id) {
-        navigate(`/mentorship/interview/${res.session_id}`);
-      } else {
-        navigate("/interview");
-      }
-    } catch (err) {
-      console.error("Retake interview error:", err);
-      navigate("/interview");
-    } finally {
-      setRetaking(false);
-    }
+  const handleAttendAgain = () => {
+    const interviewNumber =
+      report?.interview_number ||
+      report?.overall?.interview_number ||
+      report?.blueprint_level ||
+      1;
+    navigate(`/interview?retake=${interviewNumber}`);
   };
 
   useEffect(() => {
@@ -436,11 +413,10 @@ export default function ReportPage({ sessionId: sessionIdOverride, showQuestionB
           <button
             type="button"
             onClick={handleAttendAgain}
-            disabled={retaking}
-            className="inline-flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100"
           >
-            <RefreshCw size={16} className={retaking ? "animate-spin" : ""} />
-            {retaking ? "Preparing…" : "Attend Again"}
+            <RotateCcw size={16} />
+            Attend Again
           </button>
           <button
             type="button"
