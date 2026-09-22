@@ -26,7 +26,7 @@ import { apiFetch } from "@/lib/api";
 import { openRazorpayCheckout, createUpgradePlanKey } from "@/lib/razorpay";
 import { useAuth } from "@/src/portal/context/AuthContext";
 
-const LEVEL_PRICES = { 1: 199, 2: 499, 3: 849 };
+const LEVEL_PRICES = { 1: 299, 2: 599, 3: 899 };
 
 const TIERS = [
   {
@@ -35,7 +35,7 @@ const TIERS = [
     name: "Level 1: Foundation",
     tagline: "Foundation & Baseline",
     purpose: "Understand baseline strengths and establish core placement readiness fundamentals.",
-    price: 199,
+    price: 299,
     interviews_total: 10,
     range: "1–10",
     icon: Zap,
@@ -59,7 +59,7 @@ const TIERS = [
     name: "Level 2: Skill Development",
     tagline: "Skill Development & Specialization",
     purpose: "Hands-on technical depth, behavioral mastery, and domain specialization.",
-    price: 499,
+    price: 599,
     interviews_total: 20,
     range: "1–20",
     icon: Star,
@@ -85,7 +85,7 @@ const TIERS = [
     name: "Level 3: Placement Ready",
     tagline: "Complete Placement Ready",
     purpose: "Full recruitment simulation, executive defense, and certified placement ready.",
-    price: 849,
+    price: 899,
     interviews_total: 30,
     range: "1–30",
     icon: Crown,
@@ -117,7 +117,7 @@ function formatDate(value) {
 function calcUpgradeDifferential(currentLevel, targetLevel) {
   if (targetLevel <= currentLevel) return 0;
   const currentPrice = LEVEL_PRICES[currentLevel] || 0;
-  const targetPrice = LEVEL_PRICES[targetLevel] || 849;
+  const targetPrice = LEVEL_PRICES[targetLevel] || 899;
   return Math.max(0, targetPrice - currentPrice);
 }
 

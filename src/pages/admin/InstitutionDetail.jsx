@@ -129,9 +129,9 @@ function InterviewGapSetting({ institutionId, currentGapDays, onUpdate }) {
 }
 
 const PLAN_PRICE_DEFAULTS = [
-  { key: "basic_price", planKey: "starter", label: "Level 1: Foundation (1–10)", defaultPrice: 199 },
-  { key: "advanced_price", planKey: "career", label: "Level 2: Skill Dev (1–20)", defaultPrice: 499 },
-  { key: "professional_price", planKey: "placement_pro", label: "Level 3: Placement Ready (1–30)", defaultPrice: 849 },
+  { key: "basic_price", planKey: "starter", label: "Level 1: Foundation (1–10)", defaultPrice: 299 },
+  { key: "advanced_price", planKey: "career", label: "Level 2: Skill Dev (1–20)", defaultPrice: 599 },
+  { key: "professional_price", planKey: "placement_pro", label: "Level 3: Placement Ready (1–30)", defaultPrice: 899 },
 ];
 
 function PricingSetting({ institutionId, pricing, defaults, onUpdate }) {
@@ -1400,12 +1400,12 @@ export default function InstitutionDetail() {
               institutionId={institution.id}
               pricing={institution.pricing}
               defaults={{
-                basic_price: catalog.paidPlans.find(p => p.key === 'starter' || p.key === 'basic')?.price || 199,
-                advanced_price: catalog.paidPlans.find(p => p.key === 'career' || p.key === 'advanced')?.price || 499,
-                professional_price: catalog.paidPlans.find(p => p.key === 'placement_pro' || p.key === 'professional')?.price || 849,
-                starter_price: catalog.paidPlans.find(p => p.key === 'starter' || p.key === 'basic')?.price || 199,
-                career_price: catalog.paidPlans.find(p => p.key === 'career' || p.key === 'advanced')?.price || 499,
-                placement_pro_price: catalog.paidPlans.find(p => p.key === 'placement_pro' || p.key === 'professional')?.price || 849,
+                basic_price: catalog.paidPlans.find(p => p.key === 'starter' || p.key === 'basic')?.price || 299,
+                advanced_price: catalog.paidPlans.find(p => p.key === 'career' || p.key === 'advanced')?.price || 599,
+                professional_price: catalog.paidPlans.find(p => p.key === 'placement_pro' || p.key === 'professional')?.price || 899,
+                starter_price: catalog.paidPlans.find(p => p.key === 'starter' || p.key === 'basic')?.price || 299,
+                career_price: catalog.paidPlans.find(p => p.key === 'career' || p.key === 'advanced')?.price || 599,
+                placement_pro_price: catalog.paidPlans.find(p => p.key === 'placement_pro' || p.key === 'professional')?.price || 899,
               }}
               onUpdate={(newPricing) => setInstitution((prev) => ({ ...prev, pricing: newPricing }))}
             />

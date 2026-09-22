@@ -146,7 +146,7 @@ function PlacementJourneyInner() {
 
   if (!p) return null;
 
-  const LEVEL_PRICES = { 1: 199, 2: 499, 3: 849 };
+  const LEVEL_PRICES = { 1: 299, 2: 599, 3: 899 };
 
   const {
     currentLevel, currentLevelName, placementReadiness, averageScore,
@@ -377,7 +377,7 @@ function PlacementJourneyInner() {
         {/* Next Active Session To Complete (Banner) */}
         {p.nextInterview && (() => {
           const isNextLockedByTier = effectiveAccessLevel != null && p.nextInterview.level > effectiveAccessLevel;
-          const upgradeDiff = effectiveAccessLevel ? Math.max(0, (LEVEL_PRICES[p.nextInterview.level] || 849) - (LEVEL_PRICES[effectiveAccessLevel] || 0)) : (p.nextInterview.level === 2 ? 499 : 849);
+          const upgradeDiff = effectiveAccessLevel ? Math.max(0, (LEVEL_PRICES[p.nextInterview.level] || 899) - (LEVEL_PRICES[effectiveAccessLevel] || 0)) : (p.nextInterview.level === 2 ? 599 : 899);
           return (
             <section className={`rounded-2xl border-2 p-6 shadow-sm ${
               isNextLockedByTier
@@ -423,7 +423,7 @@ function PlacementJourneyInner() {
                     className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 px-6 py-3 text-sm font-bold text-white shadow-md transition hover:shadow-lg whitespace-nowrap cursor-pointer"
                   >
                     <Sparkles className="h-4 w-4" />
-                    Unlock Level {p.nextInterview.level} ({upgradeDiff > 0 ? `₹${upgradeDiff} Upgrade` : (p.nextInterview.level === 2 ? "₹499" : "₹849")})
+                    Unlock Level {p.nextInterview.level} ({upgradeDiff > 0 ? `₹${upgradeDiff} Upgrade` : (p.nextInterview.level === 2 ? "₹599" : "₹899")})
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 ) : (
@@ -566,8 +566,8 @@ function PlacementJourneyInner() {
                         >
                           <Sparkles className="h-4 w-4" />
                           Unlock Level {lvl.id} ({(() => {
-                            const diff = Math.max(0, (LEVEL_PRICES[lvl.id] || 849) - (LEVEL_PRICES[effectiveAccessLevel] || 0));
-                            return diff > 0 ? `₹${diff} Upgrade` : (lvl.id === 2 ? "₹499" : "₹849");
+                            const diff = Math.max(0, (LEVEL_PRICES[lvl.id] || 899) - (LEVEL_PRICES[effectiveAccessLevel] || 0));
+                            return diff > 0 ? `₹${diff} Upgrade` : (lvl.id === 2 ? "₹599" : "₹899");
                           })()})
                           <ArrowRight className="h-3.5 w-3.5" />
                         </button>
@@ -702,8 +702,8 @@ function PlacementJourneyInner() {
                               className="text-xs font-bold text-white bg-amber-700 hover:bg-amber-800 px-4 py-2 rounded-lg shadow-xs transition whitespace-nowrap cursor-pointer"
                             >
                               Unlock Level {lvl.id} ({(() => {
-                                const diff = Math.max(0, (LEVEL_PRICES[lvl.id] || 849) - (LEVEL_PRICES[effectiveAccessLevel] || 0));
-                                return diff > 0 ? `₹${diff} Upgrade` : (lvl.id === 2 ? "₹499" : "₹849");
+                                const diff = Math.max(0, (LEVEL_PRICES[lvl.id] || 899) - (LEVEL_PRICES[effectiveAccessLevel] || 0));
+                                return diff > 0 ? `₹${diff} Upgrade` : (lvl.id === 2 ? "₹599" : "₹899");
                               })()})
                             </button>
                           </div>
