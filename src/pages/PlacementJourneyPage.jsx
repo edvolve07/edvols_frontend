@@ -428,21 +428,11 @@ function PlacementJourneyInner() {
                   </button>
                 ) : (
                   <button
-                    disabled={startingInterviewNumber != null}
                     onClick={() => handleStartSession(p.nextInterview.interview_number)}
-                    className="flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-bold text-white shadow-md transition hover:bg-brand-700 hover:shadow-lg disabled:opacity-50 whitespace-nowrap cursor-pointer"
+                    className="flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-bold text-white shadow-md transition hover:bg-brand-700 hover:shadow-lg whitespace-nowrap cursor-pointer"
                   >
-                    {startingInterviewNumber === p.nextInterview.interview_number ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Starting Session…
-                      </>
-                    ) : (
-                      <>
-                        Start Interview #{p.nextInterview.interview_number}
-                        <ArrowRight className="h-4 w-4" />
-                      </>
-                    )}
+                    Start Interview #{p.nextInterview.interview_number}
+                    <ArrowRight className="h-4 w-4" />
                   </button>
                 )}
               </div>
